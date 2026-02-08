@@ -109,7 +109,7 @@ export default function OrdersPage() {
               const status = statusLabels[order.status] || statusLabels.draft;
               const StatusIcon = status.icon;
               return (
-                <div key={order.id} className="rounded-xl bg-card shadow-card p-4 animate-fade-in">
+                <Link to={`/orders/${order.id}`} key={order.id} className="block rounded-xl bg-card shadow-card p-4 animate-fade-in hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold text-sm">
@@ -127,7 +127,7 @@ export default function OrdersPage() {
                       {lang === 'ar' ? status.ar : status.en}
                     </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

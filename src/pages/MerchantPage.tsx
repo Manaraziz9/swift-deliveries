@@ -1,5 +1,5 @@
-import { useParams } from 'react-router-dom';
-import { ArrowRight, MapPin, Phone, Clock, Star, BadgeCheck, ExternalLink } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowRight, MapPin, Phone, Clock, Star, BadgeCheck, ExternalLink, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 export default function MerchantPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { lang, t } = useLang();
   const { data: merchant, isLoading } = useMerchant(id);
   const { data: branches } = useBranches(id);
@@ -41,15 +42,32 @@ export default function MerchantPage() {
     <div className="min-h-screen pb-24">
       <TopBar />
 
-      {/* Header */}
-      <div className="bg-gradient-navy px-4 py-8 relative overflow-hidden">
+      {/* Cover Image + Header */}
+      <div className="bg-gradient-navy relative overflow-hidden">
+        {merchant.cover_url && (
+          <div className="h-40 w-full">
+            <img 
+              src={merchant.cover_url} 
+              alt="" 
+              className="w-full h-full object-cover opacity-60"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-navy" />
+          </div>
+        )}
         <div className="absolute -top-16 -end-16 h-48 w-48 rounded-full bg-gradient-gold opacity-10 blur-3xl" />
-        <div className="container relative">
+        <div className={cn("container relative px-4 pb-6", merchant.cover_url ? "-mt-16" : "pt-8")}>
           <Link to="/search" className="inline-flex items-center gap-1 text-secondary-foreground/60 text-xs mb-4 hover:text-secondary-foreground">
             <ArrowRight className="h-3 w-3 rotate-180" />
             {t('search')}
           </Link>
           <div className="flex items-start gap-3">
+            {merchant.logo_url && (
+              <img 
+                src={merchant.logo_url} 
+                alt="" 
+                className="w-16 h-16 rounded-xl object-cover border-2 border-background shadow-lg"
+              />
+            )}
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-2xl font-bold text-secondary-foreground">{name}</h2>
@@ -139,23 +157,35 @@ export default function MerchantPage() {
             {catalog.map((item, i) => {
               const itemName = lang === 'ar' && item.name_ar ? item.name_ar : item.name;
               const itemDesc = lang === 'ar' && item.description_ar ? item.description_ar : item.description;
+              const photos = item.photos as string[] | null;
               return (
                 <div key={item.id} className="rounded-xl bg-card shadow-card p-4 animate-fade-in" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    {photos && photos.length > 0 ? (
+                      <img 
+                        src={photos[0]} 
+                        alt={itemName} 
+                        className="w-16 h-16 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Image className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <h5 className="font-semibold text-sm">{itemName}</h5>
-                      {itemDesc && <p className="text-xs text-muted-foreground mt-0.5">{itemDesc}</p>}
-                    </div>
-                    <div className="text-end shrink-0">
-                      <div className="font-bold text-sm text-primary">
-                        {item.price_type === 'fixed'
-                          ? `${item.price_fixed} ${t('sar')}`
-                          : `${item.price_min}–${item.price_max} ${t('sar')}`
-                        }
+                      {itemDesc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{itemDesc}</p>}
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="font-bold text-sm text-primary">
+                          {item.price_type === 'fixed'
+                            ? `${item.price_fixed} ${t('sar')}`
+                            : `${item.price_min}–${item.price_max} ${t('sar')}`
+                          }
+                        </div>
+                        <button className="text-[10px] font-medium text-primary underline underline-offset-2">
+                          {t('addToOrder')}
+                        </button>
                       </div>
-                      <button className="mt-1 text-[10px] font-medium text-primary underline underline-offset-2">
-                        {t('addToOrder')}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -168,7 +198,10 @@ export default function MerchantPage() {
       {/* CTA */}
       <div className="fixed bottom-16 inset-x-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
         <div className="container">
-          <button className="w-full bg-gradient-gold text-primary-foreground py-3.5 rounded-xl font-bold shadow-gold hover:opacity-90 transition-opacity">
+          <button 
+            onClick={() => navigate(`/create-order?merchant=${id}&branch=${branches?.[0]?.id || ''}`)}
+            className="w-full bg-gradient-gold text-primary-foreground py-3.5 rounded-xl font-bold shadow-gold hover:opacity-90 transition-opacity"
+          >
             {t('createOrder')}
           </button>
         </div>

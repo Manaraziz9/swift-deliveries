@@ -1,21 +1,139 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import { useLang } from '@/contexts/LangContext';
-import { User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { User, LogOut, Settings, Phone, Mail, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Profile {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  language: string | null;
+}
 
 export default function ProfilePage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setProfile(data as Profile);
+          }
+          setLoading(false);
+        });
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success(lang === 'ar' ? 'تم تسجيل الخروج' : 'Signed out');
+    navigate('/');
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen pb-20">
+        <TopBar />
+        <div className="container py-12 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen pb-20">
       <TopBar />
-      <div className="container py-12 text-center">
-        <User className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-        <h2 className="text-lg font-bold mb-2">{t('profile')}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t('loginSignup')}
-        </p>
+
+      {/* Profile Header */}
+      <div className="bg-gradient-navy px-4 py-8 relative overflow-hidden">
+        <div className="absolute -top-16 -end-16 h-48 w-48 rounded-full bg-gradient-gold opacity-10 blur-3xl" />
+        <div className="container relative flex items-center gap-4">
+          <div className="h-20 w-20 rounded-full bg-card flex items-center justify-center shadow-lg">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              <User className="h-10 w-10 text-muted-foreground" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-secondary-foreground">
+              {profile?.name || user.email?.split('@')[0]}
+            </h2>
+            <p className="text-secondary-foreground/60 text-sm">{user.email}</p>
+          </div>
+        </div>
       </div>
+
+      {/* Info Cards */}
+      <div className="container py-6 space-y-3">
+        <div className="rounded-xl bg-card shadow-card p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</p>
+            <p className="font-medium text-sm">{user.email}</p>
+          </div>
+        </div>
+
+        {profile?.phone && (
+          <div className="rounded-xl bg-card shadow-card p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-emerald/10 flex items-center justify-center">
+              <Phone className="h-5 w-5 text-emerald" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الهاتف' : 'Phone'}</p>
+              <p className="font-medium text-sm">{profile.phone}</p>
+            </div>
+          </div>
+        )}
+
+        <button className="w-full rounded-xl bg-card shadow-card p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <span className="font-medium text-sm">{lang === 'ar' ? 'الإعدادات' : 'Settings'}</span>
+        </button>
+
+        <button
+          onClick={handleSignOut}
+          className="w-full rounded-xl bg-destructive/10 p-4 flex items-center gap-3 hover:bg-destructive/20 transition-colors"
+        >
+          <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center">
+            <LogOut className="h-5 w-5 text-destructive" />
+          </div>
+          <span className="font-medium text-sm text-destructive">
+            {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
+          </span>
+        </button>
+      </div>
+
       <BottomNav />
     </div>
   );

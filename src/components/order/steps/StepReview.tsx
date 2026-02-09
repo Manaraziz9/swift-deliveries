@@ -1,7 +1,9 @@
 import { useLang } from '@/contexts/LangContext';
-import { Package, MapPin, ShoppingBag, FileText, AlertCircle, ListOrdered } from 'lucide-react';
+import { Package, MapPin, ShoppingBag, FileText, AlertCircle, ListOrdered, Sparkles, FlaskConical } from 'lucide-react';
 import { OrderFormData } from '../OrderWizard';
 import { useMerchant, useBranches, useMerchants } from '@/hooks/useMerchants';
+import { getIntentMetadata } from '@/lib/orderIntentRules';
+import { cn } from '@/lib/utils';
 
 interface StepReviewProps {
   formData: OrderFormData;
@@ -14,6 +16,7 @@ export default function StepReview({ formData }: StepReviewProps) {
   const { data: allMerchants } = useMerchants();
 
   const selectedBranch = branches?.find(b => b.id === formData.sourceBranchId);
+  const intentMetadata = formData.intent ? getIntentMetadata(formData.intent) : null;
 
   const orderTypeLabels = {
     DIRECT: lang === 'ar' ? 'توصيل مباشر' : 'Direct Delivery',
@@ -40,13 +43,39 @@ export default function StepReview({ formData }: StepReviewProps) {
         {lang === 'ar' ? 'مراجعة الطلب' : 'Review Order'}
       </h3>
 
-      {/* Order Type */}
+      {/* Intent Badge */}
+      {intentMetadata && (
+        <div className={cn(
+          "rounded-xl p-4 border",
+          "bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20"
+        )}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{intentMetadata.emoji}</span>
+            <div>
+              <p className="font-bold">
+                {lang === 'ar' ? intentMetadata.titleAr : intentMetadata.titleEn}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {lang === 'ar' ? intentMetadata.descAr : intentMetadata.descEn}
+              </p>
+            </div>
+          </div>
+          {formData.experimentFlag && (
+            <div className="flex items-center gap-2 mt-3 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+              <FlaskConical className="h-4 w-4" />
+              {lang === 'ar' ? 'طلب تجريبي - مرة واحدة' : 'Trial Order - One Time'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Order Type (internal) */}
       <div className="rounded-xl bg-card border p-4">
         <div className="flex items-center gap-2 text-sm font-medium mb-2">
           <Package className="h-4 w-4 text-primary" />
-          {lang === 'ar' ? 'نوع الطلب' : 'Order Type'}
+          {lang === 'ar' ? 'نوع المعالجة' : 'Processing Type'}
         </div>
-        <p className="text-sm">{orderTypeLabels[formData.orderType]}</p>
+        <p className="text-sm text-muted-foreground">{orderTypeLabels[formData.orderType]}</p>
       </div>
 
       {/* Chain Tasks - Show for CHAIN orders */}

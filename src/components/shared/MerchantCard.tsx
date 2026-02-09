@@ -1,5 +1,5 @@
 import { useLang } from '@/contexts/LangContext';
-import { MapPin, Clock, BadgeCheck, Navigation, ArrowUpRight } from 'lucide-react';
+import { MapPin, Clock, BadgeCheck, Navigation, ArrowUpRight, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QualityBadge from './QualityBadge';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ interface MerchantCardProps {
   quality?: {
     composite_score?: number | null;
     internal_count?: number | null;
+    internal_avg?: number | null;
   } | null;
   index?: number;
   distance?: number | null;
@@ -113,7 +114,15 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
                 {formatDistance(distance)}
               </span>
             )}
-            {quality?.internal_count ? (
+            {quality?.internal_avg && quality.internal_avg > 0 ? (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Star className="h-3.5 w-3.5 text-rating-star fill-rating-star" />
+                <span className="font-medium text-foreground">{Number(quality.internal_avg).toFixed(1)}</span>
+                {quality.internal_count ? (
+                  <span>({quality.internal_count})</span>
+                ) : null}
+              </span>
+            ) : quality?.internal_count ? (
               <span className="text-muted-foreground">{quality.internal_count} {t('reviews')}</span>
             ) : null}
           </div>

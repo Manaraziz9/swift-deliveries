@@ -3,6 +3,7 @@ import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Globe, User, ChevronDown } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 
 export default function TopBar() {
   const { lang, setLang, t } = useLang();
@@ -14,7 +15,7 @@ export default function TopBar() {
         {/* YA Logo - LOCKED DESIGN */}
         <Link to="/" className="flex items-center gap-1 group">
           <div className="flex items-center">
-            <span className="text-2xl font-bold text-ya-primary tracking-tight font-en group-hover:text-ya-accent transition-colors duration-200">
+            <span className="text-2xl font-bold text-ya-primary dark:text-white tracking-tight font-en group-hover:text-ya-accent transition-colors duration-200">
               YA
             </span>
             <span className="w-2 h-2 rounded-full bg-ya-highlight ms-0.5 mt-0.5 group-hover:scale-110 transition-transform duration-200" />
@@ -31,6 +32,9 @@ export default function TopBar() {
             <Globe className="h-4 w-4" />
             <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
           </button>
+
+          {/* Theme toggle */}
+          <ThemeToggle />
           
           {/* Notifications */}
           {user && <NotificationBell />}

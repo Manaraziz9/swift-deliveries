@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SplashScreenProps {
@@ -8,6 +8,11 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onComplete, duration = 2500 }: SplashScreenProps) {
   const [phase, setPhase] = useState<'dots' | 'settle' | 'exit'>('dots');
+
+  const handleSkip = useCallback(() => {
+    setPhase('exit');
+    setTimeout(onComplete, 300);
+  }, [onComplete]);
 
   useEffect(() => {
     // Dots animation phase
@@ -27,9 +32,14 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
   return (
     <div 
       className={cn(
-        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-ya-primary transition-opacity duration-300",
-        phase === 'exit' && "opacity-0"
+        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-ya-primary transition-opacity duration-300 cursor-pointer select-none",
+        phase === 'exit' && "opacity-0 pointer-events-none"
       )}
+      onClick={handleSkip}
+      onKeyDown={(e) => e.key === 'Enter' && handleSkip()}
+      role="button"
+      tabIndex={0}
+      aria-label="Skip splash screen"
     >
       {/* Logo: YA• */}
       <div className="flex items-center gap-1 animate-fade-in">
@@ -72,6 +82,11 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
         style={{ animationDelay: '0.2s' }}
       >
         When you call, we act.
+      </p>
+
+      {/* Skip hint */}
+      <p className="absolute bottom-8 text-white/40 text-xs animate-fade-in" style={{ animationDelay: '1s' }}>
+        Tap to skip
       </p>
     </div>
   );

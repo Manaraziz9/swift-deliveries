@@ -78,29 +78,42 @@
   }
 
   .dark {
+    /* YA Dark Mode - LOCKED */
     --background: 222 38% 8%;
     --foreground: 210 40% 98%;
+    
     --card: 222 35% 12%;
     --card-foreground: 210 40% 98%;
+    
     --popover: 222 35% 12%;
     --popover-foreground: 210 40% 98%;
-    --primary: 171 78% 40%;
+    
+    --primary: 171 78% 40%;           /* Teal as primary in dark */
     --primary-foreground: 222 38% 8%;
+    
     --secondary: 222 38% 19%;
     --secondary-foreground: 210 40% 98%;
+    
     --muted: 222 25% 18%;
     --muted-foreground: 215 16% 60%;
+    
     --accent: 171 78% 40%;
     --accent-foreground: 0 0% 100%;
+    
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 45 88% 63%;
+    
+    --warning: 45 88% 63%;            /* Soft Gold - LOCKED */
     --warning-foreground: 222 47% 11%;
+    
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
+    
     --border: 222 25% 20%;
     --input: 222 25% 20%;
     --ring: 171 78% 40%;
+    
+    /* Sidebar Dark */
     --sidebar-background: 222 40% 6%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 171 78% 40%;
@@ -109,6 +122,12 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 222 25% 16%;
     --sidebar-ring: 171 78% 40%;
+    
+    /* YA Dark Tokens */
+    --ya-bg: 222 38% 8%;
+    --ya-text: 210 40% 98%;
+    --ya-text-2: 215 16% 60%;
+    --ya-border: 222 25% 20%;
   }
 }
 

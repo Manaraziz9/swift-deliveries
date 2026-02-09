@@ -276,6 +276,29 @@
     50% { transform: scale(1.2); opacity: 0.9; }
   }
 
+  /* Hero Section Animations - Iconic entrance */
+  @keyframes hero-ya {
+    0% { opacity: 0; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes hero-dot-blink {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.3); }
+    70% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes hero-text {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes hero-cta {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
   }
@@ -302,6 +325,26 @@
 
   .animate-splash-dot-pulse {
     animation: splash-dot-pulse 0.6s ease-in-out 2;
+  }
+
+  /* Hero animations with staggered timing */
+  .animate-hero-ya {
+    animation: hero-ya 0.5s ease-out forwards;
+  }
+
+  .animate-hero-dot {
+    animation: hero-dot-blink 0.6s ease-out 0.3s forwards;
+    opacity: 0;
+  }
+
+  .animate-hero-text {
+    animation: hero-text 0.4s ease-out 0.4s forwards;
+    opacity: 0;
+  }
+
+  .animate-hero-cta {
+    animation: hero-cta 0.4s ease-out 0.6s forwards;
+    opacity: 0;
   }
 
   /* Safe area */

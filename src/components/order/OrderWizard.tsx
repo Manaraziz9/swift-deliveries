@@ -234,9 +234,26 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Progress Bar */}
-      <div className="sticky top-0 z-10 bg-background border-b">
+      {/* Top Navigation Bar with Back Button */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b">
         <div className="container py-3">
+          {/* Back Button Row */}
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={() => step > 1 ? handleBack() : navigate(-1)}
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowPrev className="h-4 w-4" />
+              {step > 1 
+                ? (lang === 'ar' ? 'السابق' : 'Back')
+                : (lang === 'ar' ? 'إلغاء' : 'Cancel')
+              }
+            </button>
+            <h2 className="text-sm font-bold">{lang === 'ar' ? 'طلب جديد' : 'New Order'}</h2>
+            <div className="w-16" /> {/* Spacer for alignment */}
+          </div>
+          
+          {/* Progress Bar */}
           <div className="flex justify-between items-center mb-2">
             {steps.map((s, i) => (
               <div key={s.id} className="flex items-center">

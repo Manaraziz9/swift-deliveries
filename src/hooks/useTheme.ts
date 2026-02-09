@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -10,14 +10,23 @@ export function useTheme() {
     return 'system';
   });
 
-  useEffect(() => {
+  const applyTheme = useCallback((resolvedTheme: 'light' | 'dark') => {
     const root = window.document.documentElement;
     
-    const applyTheme = (resolvedTheme: 'light' | 'dark') => {
-      root.classList.remove('light', 'dark');
-      root.classList.add(resolvedTheme);
-    };
+    // Add transitioning class for smooth animation
+    root.classList.add('theme-transitioning');
+    
+    // Apply the theme
+    root.classList.remove('light', 'dark');
+    root.classList.add(resolvedTheme);
+    
+    // Remove transitioning class after animation completes
+    setTimeout(() => {
+      root.classList.remove('theme-transitioning');
+    }, 350);
+  }, []);
 
+  useEffect(() => {
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       applyTheme(mediaQuery.matches ? 'dark' : 'light');
@@ -28,7 +37,7 @@ export function useTheme() {
     } else {
       applyTheme(theme);
     }
-  }, [theme]);
+  }, [theme, applyTheme]);
 
   const setThemeValue = (newTheme: Theme) => {
     setTheme(newTheme);

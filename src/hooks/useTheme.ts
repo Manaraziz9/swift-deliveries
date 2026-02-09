@@ -2,40 +2,53 @@ import { useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
-export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('ya-theme') as Theme) || 'system';
+function getInitialTheme(): Theme {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('ya-theme');
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      return stored;
     }
-    return 'system';
-  });
+  }
+  return 'system';
+}
+
+export function useTheme() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {
     const root = window.document.documentElement;
     
     const applyTheme = (resolvedTheme: 'light' | 'dark') => {
-      // Add transitioning class for smooth animation
       root.classList.add('theme-transitioning');
-      
-      // Apply the theme
       root.classList.remove('light', 'dark');
       root.classList.add(resolvedTheme);
       
-      // Remove transitioning class after animation completes
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         root.classList.remove('theme-transitioning');
       }, 350);
+      
+      return () => clearTimeout(timer);
     };
+
+    let cleanup: (() => void) | undefined;
 
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      applyTheme(mediaQuery.matches ? 'dark' : 'light');
+      cleanup = applyTheme(mediaQuery.matches ? 'dark' : 'light');
       
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
+      const handler = (e: MediaQueryListEvent) => {
+        cleanup?.();
+        cleanup = applyTheme(e.matches ? 'dark' : 'light');
+      };
+      
       mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
+      return () => {
+        cleanup?.();
+        mediaQuery.removeEventListener('change', handler);
+      };
     } else {
-      applyTheme(theme);
+      cleanup = applyTheme(theme);
+      return () => cleanup?.();
     }
   }, [theme]);
 

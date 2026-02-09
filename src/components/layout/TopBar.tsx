@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Globe, User } from 'lucide-react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function TopBar() {
   const { lang, setLang, t } = useLang();
@@ -21,6 +22,7 @@ export default function TopBar() {
             <Globe className="h-3.5 w-3.5" />
             {lang === 'ar' ? 'EN' : 'عربي'}
           </button>
+          {user && <NotificationBell />}
           {!user && (
             <Link
               to="/auth"

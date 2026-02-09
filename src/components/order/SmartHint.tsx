@@ -19,19 +19,21 @@ export default function SmartHint({
   className,
 }: SmartHintProps) {
   const { lang } = useLang();
-  const metadata = getIntentMetadata(suggestedIntent);
 
   if (!isVisible) return null;
 
   return (
     <div
       className={cn(
-        "relative bg-gradient-to-r from-accent/10 via-accent/5 to-transparent",
-        "border border-accent/20 rounded-2xl p-4 mb-4",
+        "relative bg-gradient-to-r from-ya-highlight/10 via-ya-highlight/5 to-transparent",
+        "border-2 border-ya-highlight/20 rounded-ya-lg p-4 mb-4",
         "animate-fade-in",
         className
       )}
     >
+      {/* Highlight bar */}
+      <div className="absolute top-0 inset-x-0 h-0.5 bg-ya-highlight rounded-t-ya-lg" />
+
       {/* Close button */}
       <button
         onClick={onDismiss}
@@ -42,13 +44,13 @@ export default function SmartHint({
 
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="shrink-0 w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
-          <Lightbulb className="h-5 w-5 text-accent" />
+        <div className="shrink-0 w-10 h-10 rounded-ya-md bg-ya-highlight/15 flex items-center justify-center">
+          <Lightbulb className="h-5 w-5 text-ya-highlight" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-sm mb-1">
+          <h4 className="font-semibold text-sm mb-1">
             {lang === 'ar' ? 'اقتراح سريع' : 'Quick Suggestion'}
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">
@@ -61,7 +63,7 @@ export default function SmartHint({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={onConvert}
-              className="inline-flex items-center gap-1.5 bg-accent text-accent-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+              className="btn-ya py-2 px-4 text-sm flex items-center gap-1.5"
             >
               <RefreshCw className="h-4 w-4" />
               {lang === 'ar' ? 'حوّل الآن' : 'Convert Now'}

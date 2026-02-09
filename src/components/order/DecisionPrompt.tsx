@@ -1,6 +1,5 @@
 import { useLang } from '@/contexts/LangContext';
-import { RefreshCw, ArrowRight, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { RefreshCw, ArrowRight } from 'lucide-react';
 import { Intent, getIntentMetadata } from '@/lib/orderIntentRules';
 import {
   Sheet,
@@ -30,7 +29,6 @@ export default function DecisionPrompt({
   variant = 'convert_to_coordinate',
 }: DecisionPromptProps) {
   const { lang } = useLang();
-  const metadata = getIntentMetadata(suggestedIntent);
 
   const getContent = () => {
     // Smart conversion prompt
@@ -83,13 +81,13 @@ export default function DecisionPrompt({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="rounded-t-3xl">
+      <SheetContent side="bottom" className="rounded-t-ya-lg border-t-2 border-ya-highlight">
         <SheetHeader className="text-center pb-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-accent/15 flex items-center justify-center mb-3">
-            <RefreshCw className="h-6 w-6 text-accent" />
+          <div className="mx-auto w-12 h-12 rounded-full bg-ya-highlight/15 flex items-center justify-center mb-3">
+            <RefreshCw className="h-6 w-6 text-ya-highlight" />
           </div>
-          <SheetTitle className="text-xl">{content.title}</SheetTitle>
-          <SheetDescription className="text-base leading-relaxed">
+          <SheetTitle className="text-xl font-semibold">{content.title}</SheetTitle>
+          <SheetDescription className="text-base leading-relaxed text-muted-foreground">
             {content.body}
           </SheetDescription>
         </SheetHeader>
@@ -98,7 +96,7 @@ export default function DecisionPrompt({
           {/* Primary Button */}
           <button
             onClick={onAccept}
-            className="w-full bg-gradient-gold text-primary-foreground py-4 rounded-xl font-bold shadow-gold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            className="btn-ya w-full py-4 flex items-center justify-center gap-2"
           >
             <RefreshCw className="h-5 w-5" />
             {content.primaryLabel}
@@ -107,10 +105,10 @@ export default function DecisionPrompt({
           {/* Secondary Button */}
           <button
             onClick={onDecline}
-            className="w-full py-3 rounded-xl font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-ya-md font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all flex items-center justify-center gap-2"
           >
             {content.secondaryLabel}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" />
           </button>
 
           {/* Note */}

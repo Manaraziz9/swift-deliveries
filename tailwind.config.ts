@@ -16,17 +16,17 @@ export default {
         en: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
-        // YA Brand Colors
+        // YA Brand Colors (LOCKED)
         ya: {
-          primary: "hsl(222 38% 19%)",
-          accent: "hsl(171 78% 40%)",
-          highlight: "hsl(38 91% 50%)",
-          bg: "hsl(210 40% 98%)",
-          text: "hsl(222 47% 11%)",
-          text2: "hsl(215 16% 47%)",
-          border: "hsl(214 32% 91%)",
-          success: "hsl(142 71% 45%)",
-          error: "hsl(0 72% 51%)",
+          primary: "hsl(222 38% 19%)",      // #1F2A44 - Deep Indigo
+          accent: "hsl(171 78% 40%)",       // #14B8A6 - Teal (Action)
+          highlight: "hsl(45 88% 63%)",     // #F2C94C - Soft Gold
+          bg: "hsl(210 40% 98%)",           // #F8FAFC
+          text: "hsl(222 47% 11%)",         // #0F172A
+          text2: "hsl(215 16% 47%)",        // #475569
+          border: "hsl(214 32% 91%)",       // #E2E8F0
+          success: "hsl(142 71% 45%)",      // #16A34A
+          error: "hsl(0 72% 51%)",          // #DC2626
         },
         // System colors
         border: "hsl(var(--border))",

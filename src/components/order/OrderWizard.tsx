@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Check, Loader2, CreditCard } from 'lucide-react';
 import StepOrderType from './steps/StepOrderType';
 import StepSource from './steps/StepSource';
+import StepChainTasks from './steps/StepChainTasks';
 import StepItems from './steps/StepItems';
 import StepDestination from './steps/StepDestination';
 import StepPolicies from './steps/StepPolicies';
@@ -15,17 +16,33 @@ import PaymentModal from '@/components/payment/PaymentModal';
 import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
 import { cn } from '@/lib/utils';
 
+// Chain Task type for multi-step orders
+export interface ChainTask {
+  id: string;
+  sequence: number;
+  type: 'pickup' | 'purchase' | 'dropoff' | 'handover' | 'onsite';
+  merchantId: string | null;
+  branchId: string | null;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  description: string;
+}
+
 export interface OrderFormData {
   // Step 1: Order Type
   orderType: 'DIRECT' | 'PURCHASE_DELIVER' | 'CHAIN';
   domainId: string;
   
-  // Step 2: Source
+  // Step 2: Source (for DIRECT/PURCHASE_DELIVER)
   sourceMerchantId: string | null;
   sourceBranchId: string | null;
   pickupAddress: string;
   pickupLat: number | null;
   pickupLng: number | null;
+  
+  // Step 2b: Chain Tasks (for CHAIN orders)
+  chainTasks: ChainTask[];
   
   // Step 3: Items
   items: {
@@ -61,6 +78,7 @@ const initialData: OrderFormData = {
   pickupAddress: '',
   pickupLat: null,
   pickupLng: null,
+  chainTasks: [],
   items: [],
   dropoffAddress: '',
   dropoffLat: null,
@@ -99,14 +117,32 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   const serviceFee = estimatedTotal * 0.05;
   const totalAmount = estimatedTotal + deliveryFee + serviceFee;
 
+  // Dynamic step titles based on order type
+  const getStepTitle = (stepId: number) => {
+    if (stepId === 2) {
+      return formData.orderType === 'CHAIN' 
+        ? (lang === 'ar' ? 'المهام' : 'Tasks')
+        : (lang === 'ar' ? 'المصدر' : 'Source');
+    }
+    const titles: Record<number, string> = {
+      1: lang === 'ar' ? 'نوع الطلب' : 'Order Type',
+      3: lang === 'ar' ? 'المنتجات' : 'Items',
+      4: lang === 'ar' ? 'الوجهة' : 'Destination',
+      5: lang === 'ar' ? 'السياسات' : 'Policies',
+      6: lang === 'ar' ? 'الدفع' : 'Payment',
+      7: lang === 'ar' ? 'المراجعة' : 'Review',
+    };
+    return titles[stepId] || '';
+  };
+
   const steps = [
-    { id: 1, title: lang === 'ar' ? 'نوع الطلب' : 'Order Type' },
-    { id: 2, title: lang === 'ar' ? 'المصدر' : 'Source' },
-    { id: 3, title: lang === 'ar' ? 'المنتجات' : 'Items' },
-    { id: 4, title: lang === 'ar' ? 'الوجهة' : 'Destination' },
-    { id: 5, title: lang === 'ar' ? 'السياسات' : 'Policies' },
-    { id: 6, title: lang === 'ar' ? 'الدفع' : 'Payment' },
-    { id: 7, title: lang === 'ar' ? 'المراجعة' : 'Review' },
+    { id: 1, title: getStepTitle(1) },
+    { id: 2, title: getStepTitle(2) },
+    { id: 3, title: getStepTitle(3) },
+    { id: 4, title: getStepTitle(4) },
+    { id: 5, title: getStepTitle(5) },
+    { id: 6, title: getStepTitle(6) },
+    { id: 7, title: getStepTitle(7) },
   ];
 
   const updateFormData = (data: Partial<OrderFormData>) => {
@@ -236,9 +272,11 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
         {step === 1 && (
           <StepOrderType formData={formData} updateFormData={updateFormData} />
         )}
-        {step === 2 && (
+        {step === 2 && formData.orderType === 'CHAIN' ? (
+          <StepChainTasks formData={formData} updateFormData={updateFormData} />
+        ) : step === 2 ? (
           <StepSource formData={formData} updateFormData={updateFormData} />
-        )}
+        ) : null}
         {step === 3 && (
           <StepItems formData={formData} updateFormData={updateFormData} />
         )}

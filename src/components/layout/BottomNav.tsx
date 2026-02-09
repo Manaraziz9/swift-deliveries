@@ -15,8 +15,8 @@ export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-card/80 backdrop-blur-xl safe-area-bottom">
-      <div className="flex items-center justify-around h-16">
+    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-card/90 backdrop-blur-xl safe-area-bottom">
+      <div className="flex items-center justify-around h-18">
         {navItems.map(({ key, icon: Icon, path }) => {
           const active = location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
           return (
@@ -24,12 +24,31 @@ export default function BottomNav() {
               key={key}
               to={path}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1 transition-colors",
-                active ? "text-primary" : "text-muted-foreground"
+                "relative flex flex-col items-center gap-1 px-5 py-2 transition-all duration-300",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className={cn("h-5 w-5", active && "drop-shadow-sm")} />
-              <span className="text-[10px] font-medium">{t(key)}</span>
+              {/* Active indicator */}
+              {active && (
+                <span className="absolute -top-0.5 inset-x-4 h-0.5 bg-gradient-gold-static rounded-full" />
+              )}
+              
+              <div className={cn(
+                "relative p-1.5 rounded-xl transition-all duration-300",
+                active && "bg-primary/10"
+              )}>
+                <Icon className={cn(
+                  "h-5 w-5 transition-transform duration-300",
+                  active && "scale-110"
+                )} />
+              </div>
+              
+              <span className={cn(
+                "text-[11px] font-medium transition-all duration-300",
+                active && "font-semibold"
+              )}>
+                {t(key)}
+              </span>
             </Link>
           );
         })}

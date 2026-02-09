@@ -6,11 +6,13 @@ import TopRatedSection from '@/components/home/TopRatedSection';
 
 export default function Index() {
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-22 bg-background">
       <TopBar />
-      <HeroSection />
-      <DomainTiles />
-      <TopRatedSection />
+      <main>
+        <HeroSection />
+        <DomainTiles />
+        <TopRatedSection />
+      </main>
       <BottomNav />
     </div>
   );

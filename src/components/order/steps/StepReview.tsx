@@ -1,7 +1,7 @@
 import { useLang } from '@/contexts/LangContext';
-import { Package, MapPin, ShoppingBag, FileText, AlertCircle } from 'lucide-react';
+import { Package, MapPin, ShoppingBag, FileText, AlertCircle, ListOrdered } from 'lucide-react';
 import { OrderFormData } from '../OrderWizard';
-import { useMerchant, useBranches } from '@/hooks/useMerchants';
+import { useMerchant, useBranches, useMerchants } from '@/hooks/useMerchants';
 
 interface StepReviewProps {
   formData: OrderFormData;
@@ -11,6 +11,7 @@ export default function StepReview({ formData }: StepReviewProps) {
   const { lang } = useLang();
   const { data: merchant } = useMerchant(formData.sourceMerchantId || undefined);
   const { data: branches } = useBranches(formData.sourceMerchantId || undefined);
+  const { data: allMerchants } = useMerchants();
 
   const selectedBranch = branches?.find(b => b.id === formData.sourceBranchId);
 
@@ -25,6 +26,12 @@ export default function StepReview({ formData }: StepReviewProps) {
     SAME_CATEGORY: lang === 'ar' ? 'نفس الفئة' : 'Same Category',
     WITHIN_PRICE: lang === 'ar' ? 'ضمن السعر' : 'Within Price',
     CUSTOM_RULES: lang === 'ar' ? 'قواعد مخصصة' : 'Custom Rules',
+  };
+
+  const getMerchantName = (merchantId: string | null) => {
+    if (!merchantId) return null;
+    const m = allMerchants?.find(mer => mer.id === merchantId);
+    return lang === 'ar' && m?.business_name_ar ? m.business_name_ar : m?.business_name;
   };
 
   return (
@@ -42,29 +49,66 @@ export default function StepReview({ formData }: StepReviewProps) {
         <p className="text-sm">{orderTypeLabels[formData.orderType]}</p>
       </div>
 
-      {/* Source */}
-      <div className="rounded-xl bg-card border p-4">
-        <div className="flex items-center gap-2 text-sm font-medium mb-2">
-          <MapPin className="h-4 w-4 text-primary" />
-          {lang === 'ar' ? 'المصدر' : 'Source'}
-        </div>
-        {merchant ? (
-          <div>
-            <p className="text-sm font-medium">
-              {lang === 'ar' && merchant.business_name_ar
-                ? merchant.business_name_ar
-                : merchant.business_name}
-            </p>
-            {selectedBranch && (
-              <p className="text-xs text-muted-foreground">
-                {lang === 'ar' ? selectedBranch.address_text_ar : selectedBranch.address_text}
-              </p>
-            )}
+      {/* Chain Tasks - Show for CHAIN orders */}
+      {formData.orderType === 'CHAIN' && formData.chainTasks.length > 0 ? (
+        <div className="rounded-xl bg-card border p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-3">
+            <ListOrdered className="h-4 w-4 text-primary" />
+            {lang === 'ar' ? 'المهام' : 'Tasks'} ({formData.chainTasks.length})
           </div>
-        ) : (
-          <p className="text-sm">{formData.pickupAddress || '—'}</p>
-        )}
-      </div>
+          <div className="space-y-3">
+            {formData.chainTasks.map((task, index) => (
+              <div 
+                key={task.id} 
+                className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
+              >
+                <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold shrink-0">
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">
+                    {lang === 'ar' ? `مهمة ${index + 1}` : `Task ${index + 1}`}
+                  </p>
+                  <p className="text-sm text-foreground">
+                    {task.merchantId 
+                      ? getMerchantName(task.merchantId) 
+                      : task.address || (lang === 'ar' ? 'موقع مخصص' : 'Custom Location')}
+                  </p>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {task.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : formData.orderType !== 'CHAIN' ? (
+        /* Source - Show for non-CHAIN orders */
+        <div className="rounded-xl bg-card border p-4">
+          <div className="flex items-center gap-2 text-sm font-medium mb-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            {lang === 'ar' ? 'المصدر' : 'Source'}
+          </div>
+          {merchant ? (
+            <div>
+              <p className="text-sm font-medium">
+                {lang === 'ar' && merchant.business_name_ar
+                  ? merchant.business_name_ar
+                  : merchant.business_name}
+              </p>
+              {selectedBranch && (
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar' ? selectedBranch.address_text_ar : selectedBranch.address_text}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm">{formData.pickupAddress || '—'}</p>
+          )}
+        </div>
+      ) : null}
 
       {/* Items */}
       <div className="rounded-xl bg-card border p-4">

@@ -3,7 +3,7 @@ import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   Truck, ShoppingBag, RefreshCw, Search, Star, FlaskConical,
-  ArrowLeft, ArrowRight, Sparkles, Info
+  ArrowLeft, ArrowRight, Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Intent, INTENT_METADATA, getIntentMetadata } from '@/lib/orderIntentRules';
@@ -67,7 +67,7 @@ function IntentTooltip({
   isVisible: boolean; 
   onClose: () => void;
 }) {
-  const { lang, dir } = useLang();
+  const { lang } = useLang();
   const metadata = getIntentMetadata(intent);
 
   useEffect(() => {
@@ -88,13 +88,13 @@ function IntentTooltip({
       onClick={onClose}
     >
       <div className={cn(
-        "mx-auto max-w-[90%] p-3 rounded-xl",
-        "bg-popover/95 backdrop-blur-lg border shadow-lg",
+        "mx-auto max-w-[90%] p-3 rounded-ya-md",
+        "bg-popover/95 backdrop-blur-lg border border-border shadow-ya-md",
         "text-sm text-center"
       )}>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <Info className="h-4 w-4 text-primary" />
-          <span className="font-bold">
+          <Info className="h-4 w-4 text-ya-accent" />
+          <span className="font-semibold">
             {lang === 'ar' ? metadata.titleAr : metadata.titleEn}
           </span>
         </div>
@@ -156,7 +156,7 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-border">
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <button
@@ -166,7 +166,10 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
               <ArrowBack className="h-4 w-4" />
               {lang === 'ar' ? 'رجوع' : 'Back'}
             </button>
-            <h2 className="text-lg font-bold">{lang === 'ar' ? 'طلب جديد' : 'New Order'}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">YA</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-ya-accent" />
+            </div>
             <div className="w-16" />
           </div>
         </div>
@@ -180,12 +183,12 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
           className="mb-6"
         />
 
-        {/* Title with decorative element */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-4">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              {lang === 'ar' ? 'اختر طريقتك' : 'Choose Your Way'}
+        {/* Title */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-ya-accent/10 rounded-full px-4 py-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-ya-accent animate-pulse-soft" />
+            <span className="text-sm font-medium text-ya-accent">
+              {lang === 'ar' ? 'قل YA' : 'Say YA'}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">
@@ -246,27 +249,43 @@ function IntentCard({
     }
   };
 
+  // Map gradients to YA brand colors
+  const getCardStyle = () => {
+    switch (intent.code) {
+      case 'TASK':
+        return { iconBg: 'bg-primary/10', iconColor: 'text-primary' };
+      case 'BUY':
+        return { iconBg: 'bg-ya-accent/10', iconColor: 'text-ya-accent' };
+      case 'COORDINATE':
+        return { iconBg: 'bg-ya-highlight/10', iconColor: 'text-ya-highlight' };
+      case 'DISCOVER':
+        return { iconBg: 'bg-muted', iconColor: 'text-muted-foreground' };
+      case 'RATE':
+        return { iconBg: 'bg-ya-highlight/10', iconColor: 'text-ya-highlight' };
+      case 'TRY':
+        return { iconBg: 'bg-success/10', iconColor: 'text-success' };
+      default:
+        return { iconBg: 'bg-muted', iconColor: 'text-foreground' };
+    }
+  };
+
+  const cardStyle = getCardStyle();
+
   return (
     <div className="relative">
       <button
         onClick={handleClick}
         {...longPressHandlers}
         className={cn(
-          "w-full group relative flex flex-col items-center gap-4 rounded-2xl bg-card p-6 overflow-hidden",
-          "shadow-card transition-all duration-300",
-          "hover:shadow-card-hover hover:-translate-y-1",
+          "w-full group relative flex flex-col items-center gap-4 rounded-ya-lg bg-card p-6 overflow-hidden",
+          "shadow-ya-sm transition-all duration-200",
+          "hover:shadow-ya-md hover:-translate-y-1",
           "animate-scale-in text-center select-none",
           !isActionable && "opacity-90",
-          longPressHandlers.isPressed && "scale-95"
+          longPressHandlers.isPressed && "scale-[0.98]"
         )}
-        style={{ animationDelay: `${index * 0.08}s` }}
+        style={{ animationDelay: `${index * 0.06}s` }}
       >
-        {/* Gradient background */}
-        <div className={cn(
-          "absolute inset-0 bg-gradient-to-br opacity-50 transition-opacity duration-300 group-hover:opacity-100",
-          intent.gradient
-        )} />
-        
         {/* Emoji badge */}
         <div className="absolute top-3 end-3 text-xl opacity-60 group-hover:opacity-100 transition-opacity">
           {intent.emoji}
@@ -282,15 +301,15 @@ function IntentCard({
 
         {/* Icon container */}
         <div className={cn(
-          "relative z-10 rounded-2xl p-5 transition-all duration-300",
-          intent.iconBg,
-          "group-hover:scale-110 group-hover:shadow-lg"
+          "relative z-10 rounded-ya-md p-5 transition-all duration-200",
+          cardStyle.iconBg,
+          "group-hover:scale-110"
         )}>
-          {Icon && <Icon className={cn("h-7 w-7", intent.iconColor)} />}
+          {Icon && <Icon className={cn("h-7 w-7", cardStyle.iconColor)} />}
         </div>
         
         {/* Title */}
-        <h3 className="relative z-10 text-lg font-bold">
+        <h3 className="relative z-10 text-lg font-semibold">
           {lang === 'ar' ? intent.titleAr : intent.titleEn}
         </h3>
         

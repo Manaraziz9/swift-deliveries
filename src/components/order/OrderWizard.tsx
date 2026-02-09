@@ -433,7 +433,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-border">
         <div className="container py-3">
           {/* Back Button Row */}
           <div className="flex items-center justify-between mb-3">
@@ -448,20 +448,13 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
               }
             </button>
             <div className="flex items-center gap-2">
-              {intentMetadata && (
-                <span className="text-lg">{intentMetadata.emoji}</span>
-              )}
-              <h2 className="text-sm font-bold">
-                {intentMetadata 
-                  ? (lang === 'ar' ? intentMetadata.titleAr : intentMetadata.titleEn)
-                  : (lang === 'ar' ? 'طلب جديد' : 'New Order')
-                }
-              </h2>
+              <span className="text-lg font-bold font-en">YA</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-ya-accent" />
             </div>
             {/* Save Draft Button */}
             <button
               onClick={handleSaveDraft}
-              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-ya-accent transition-colors"
               title={lang === 'ar' ? 'حفظ كمسودة' : 'Save as draft'}
             >
               <Save className="h-4 w-4" />
@@ -476,9 +469,9 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
                   className={cn(
                     "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
                     step === s.id
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-ya-accent text-white"
                       : step > s.id
-                      ? "bg-emerald text-white"
+                      ? "bg-success text-white"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -488,7 +481,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
                   <div
                     className={cn(
                       "w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1",
-                      step > s.id ? "bg-emerald" : "bg-muted"
+                      step > s.id ? "bg-success" : "bg-muted"
                     )}
                   />
                 )}
@@ -539,12 +532,12 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-0 inset-x-0 bg-background border-t p-4">
+      <div className="fixed bottom-0 inset-x-0 bg-background border-t border-border p-4">
         <div className="container flex gap-3">
           {step > 1 && (
             <button
               onClick={handleBack}
-              className="flex-1 py-3 rounded-xl border border-border font-medium flex items-center justify-center gap-2 hover:bg-muted transition-colors"
+              className="flex-1 py-3 rounded-ya-md border border-border font-medium flex items-center justify-center gap-2 hover:bg-muted transition-colors"
             >
               <ArrowPrev className="h-4 w-4" />
               {lang === 'ar' ? 'السابق' : 'Back'}
@@ -554,7 +547,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
           {step < maxStep ? (
             <button
               onClick={handleNext}
-              className="flex-1 bg-gradient-gold text-primary-foreground py-3 rounded-xl font-bold shadow-gold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              className="btn-ya flex-1 py-3 flex items-center justify-center gap-2"
             >
               {lang === 'ar' ? 'التالي' : 'Next'}
               <ArrowNext className="h-4 w-4" />
@@ -563,7 +556,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             <button
               onClick={handleSubmit}
               disabled={createOrder.isPending}
-              className="flex-1 bg-gradient-gold text-primary-foreground py-3 rounded-xl font-bold shadow-gold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="btn-ya flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {createOrder.isPending ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Check, Loader2, CreditCard } from 'lucide-react';
-import StepOrderType from './steps/StepOrderType';
+import IntentSelection from './IntentSelection';
 import StepSource from './steps/StepSource';
 import StepChainTasks from './steps/StepChainTasks';
 import StepItems from './steps/StepItems';
@@ -14,7 +14,18 @@ import StepReview from './steps/StepReview';
 import StepPayment from './steps/StepPayment';
 import PaymentModal from '@/components/payment/PaymentModal';
 import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
+import DecisionPrompt from './DecisionPrompt';
+import SmartHint from './SmartHint';
 import { cn } from '@/lib/utils';
+import { 
+  Intent, 
+  OrderState, 
+  intentToOrderType, 
+  shouldShowPrompt, 
+  applyConversion,
+  getIntentMetadata,
+  getTryConstraints
+} from '@/lib/orderIntentRules';
 
 // Chain Task type for multi-step orders
 export interface ChainTask {
@@ -30,21 +41,27 @@ export interface ChainTask {
 }
 
 export interface OrderFormData {
-  // Step 1: Order Type
+  // Intent (new)
+  intent: Intent | null;
+  
+  // Order Type (internal)
   orderType: 'DIRECT' | 'PURCHASE_DELIVER' | 'CHAIN';
   domainId: string;
   
-  // Step 2: Source (for DIRECT/PURCHASE_DELIVER)
+  // Recipient Type
+  recipientType: 'SELF' | 'THIRD_PARTY';
+  
+  // Source (for DIRECT/PURCHASE_DELIVER)
   sourceMerchantId: string | null;
   sourceBranchId: string | null;
   pickupAddress: string;
   pickupLat: number | null;
   pickupLng: number | null;
   
-  // Step 2b: Chain Tasks (for CHAIN orders)
+  // Chain Tasks (for CHAIN orders)
   chainTasks: ChainTask[];
   
-  // Step 3: Items
+  // Items
   items: {
     mode: 'catalog_item' | 'free_text';
     catalogItemId?: string;
@@ -52,27 +69,33 @@ export interface OrderFormData {
     quantity: number;
     unit?: string;
     photos?: string[];
+    notes?: string;
   }[];
   
-  // Step 4: Destination
+  // Destination
   dropoffAddress: string;
   dropoffLat: number | null;
   dropoffLng: number | null;
   recipientName: string;
   recipientPhone: string;
   
-  // Step 5: Policies
+  // Policies
   priceCap: number | null;
   substitutionPolicy: 'NONE' | 'SAME_CATEGORY' | 'WITHIN_PRICE' | 'CUSTOM_RULES';
   notes: string;
 
-  // Step 6: Payment
+  // Payment
   paymentMethod?: string;
+  
+  // Experiment flag (for TRY intent)
+  experimentFlag?: boolean;
 }
 
 const initialData: OrderFormData = {
-  orderType: 'PURCHASE_DELIVER',
+  intent: null,
+  orderType: 'DIRECT',
   domainId: '',
+  recipientType: 'SELF',
   sourceMerchantId: null,
   sourceBranchId: null,
   pickupAddress: '',
@@ -89,6 +112,7 @@ const initialData: OrderFormData = {
   substitutionPolicy: 'NONE',
   notes: '',
   paymentMethod: 'mada',
+  experimentFlag: false,
 };
 
 interface OrderWizardProps {
@@ -99,7 +123,7 @@ interface OrderWizardProps {
 export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) {
   const { lang, dir } = useLang();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 0 = Intent selection
   const [formData, setFormData] = useState<OrderFormData>(() => ({
     ...initialData,
     sourceMerchantId: merchantId || null,
@@ -108,6 +132,13 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
+  const [showDecisionPrompt, setShowDecisionPrompt] = useState(false);
+  const [decisionPromptData, setDecisionPromptData] = useState<{
+    suggestedIntent: Intent;
+    reason: 'third_party' | 'has_purchase' | 'complex_chain' | 'auto_convert';
+  } | null>(null);
+  const [showSmartHint, setShowSmartHint] = useState(false);
+  const [smartHintDismissed, setSmartHintDismissed] = useState(false);
 
   const createOrder = useCreateOrder();
 
@@ -115,54 +146,124 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   const estimatedTotal = formData.items.reduce((sum, item) => sum + item.quantity * 25, 0) || 50;
   const deliveryFee = 15;
   const serviceFee = estimatedTotal * 0.05;
-  const totalAmount = estimatedTotal + deliveryFee + serviceFee;
+  const coordinationFee = formData.orderType === 'CHAIN' ? 10 : 0;
+  const totalAmount = estimatedTotal + deliveryFee + serviceFee + coordinationFee;
 
-  // Dynamic step titles based on order type
-  const getStepTitle = (stepId: number) => {
-    if (stepId === 2) {
-      return formData.orderType === 'CHAIN' 
-        ? (lang === 'ar' ? 'المهام' : 'Tasks')
-        : (lang === 'ar' ? 'المصدر' : 'Source');
+  // Get current order state for rules engine
+  const getOrderState = useCallback((): OrderState => ({
+    intent: formData.intent || 'TASK',
+    hasPurchase: formData.items.length > 0 || formData.orderType === 'PURCHASE_DELIVER',
+    recipientType: formData.recipientType,
+    stagesCount: formData.chainTasks.length || 2,
+    hasHandover: formData.chainTasks.some(t => t.type === 'handover'),
+  }), [formData]);
+
+  // Dynamic steps based on intent/order type
+  const getSteps = () => {
+    const baseSteps = [
+      { id: 1, key: 'source', title: lang === 'ar' ? 'المصدر' : 'Source' },
+      { id: 2, key: 'items', title: lang === 'ar' ? 'المنتجات' : 'Items' },
+      { id: 3, key: 'destination', title: lang === 'ar' ? 'الوجهة' : 'Destination' },
+      { id: 4, key: 'policies', title: lang === 'ar' ? 'السياسات' : 'Policies' },
+      { id: 5, key: 'payment', title: lang === 'ar' ? 'الدفع' : 'Payment' },
+      { id: 6, key: 'review', title: lang === 'ar' ? 'المراجعة' : 'Review' },
+    ];
+
+    // CHAIN orders use tasks step instead of source
+    if (formData.orderType === 'CHAIN') {
+      baseSteps[0] = { id: 1, key: 'tasks', title: lang === 'ar' ? 'المهام' : 'Tasks' };
     }
-    const titles: Record<number, string> = {
-      1: lang === 'ar' ? 'نوع الطلب' : 'Order Type',
-      3: lang === 'ar' ? 'المنتجات' : 'Items',
-      4: lang === 'ar' ? 'الوجهة' : 'Destination',
-      5: lang === 'ar' ? 'السياسات' : 'Policies',
-      6: lang === 'ar' ? 'الدفع' : 'Payment',
-      7: lang === 'ar' ? 'المراجعة' : 'Review',
-    };
-    return titles[stepId] || '';
+
+    // TASK intent without purchase can skip policies
+    if (formData.intent === 'TASK' && formData.items.length === 0) {
+      return baseSteps.filter(s => s.key !== 'policies' && s.key !== 'items');
+    }
+
+    return baseSteps;
   };
 
-  const steps = [
-    { id: 1, title: getStepTitle(1) },
-    { id: 2, title: getStepTitle(2) },
-    { id: 3, title: getStepTitle(3) },
-    { id: 4, title: getStepTitle(4) },
-    { id: 5, title: getStepTitle(5) },
-    { id: 6, title: getStepTitle(6) },
-    { id: 7, title: getStepTitle(7) },
-  ];
+  const steps = getSteps();
+  const maxStep = steps.length;
 
   const updateFormData = (data: Partial<OrderFormData>) => {
     setFormData(prev => ({ ...prev, ...data }));
   };
 
+  // Handle intent selection
+  const handleIntentSelect = (intent: Intent) => {
+    const orderType = intentToOrderType(intent);
+    const isTry = intent === 'TRY';
+    
+    updateFormData({ 
+      intent, 
+      orderType,
+      experimentFlag: isTry,
+      // Apply TRY constraints
+      ...(isTry && { priceCap: formData.priceCap || 100 }),
+    });
+    
+    setStep(1); // Move to first step
+  };
+
   const handleNext = () => {
-    if (step < 7) setStep(step + 1);
+    // Check for conversion prompts before advancing
+    const state = getOrderState();
+    const prompt = shouldShowPrompt(state);
+
+    if (prompt.show && prompt.suggestedIntent && !smartHintDismissed) {
+      if (prompt.autoConvert) {
+        // Auto-convert with notification
+        setDecisionPromptData({
+          suggestedIntent: prompt.suggestedIntent,
+          reason: prompt.reason!,
+        });
+        setShowDecisionPrompt(true);
+        return;
+      }
+      
+      // Show suggestion prompt
+      setDecisionPromptData({
+        suggestedIntent: prompt.suggestedIntent,
+        reason: prompt.reason!,
+      });
+      setShowDecisionPrompt(true);
+      return;
+    }
+
+    if (step < maxStep) setStep(step + 1);
   };
 
   const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 0) setStep(step - 1);
+  };
+
+  const handleDecisionAccept = () => {
+    if (decisionPromptData) {
+      const newState = applyConversion(getOrderState(), decisionPromptData.suggestedIntent);
+      updateFormData({
+        intent: newState.intent,
+        orderType: intentToOrderType(newState.intent),
+        experimentFlag: newState.experimentFlag,
+      });
+    }
+    setShowDecisionPrompt(false);
+    setDecisionPromptData(null);
+    // Continue to next step
+    if (step < maxStep) setStep(step + 1);
+  };
+
+  const handleDecisionDecline = () => {
+    setShowDecisionPrompt(false);
+    setDecisionPromptData(null);
+    setSmartHintDismissed(true);
+    // Continue to next step anyway
+    if (step < maxStep) setStep(step + 1);
   };
 
   const handleSubmit = async () => {
-    // If payment method requires online payment, show modal
     if (formData.paymentMethod && formData.paymentMethod !== 'cash') {
       setShowPaymentModal(true);
     } else {
-      // Cash on delivery - create order directly
       await createOrderDraft('cash');
     }
   };
@@ -191,14 +292,17 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             items: estimatedTotal,
             delivery: deliveryFee,
             service: serviceFee,
+            coordination: coordinationFee,
             total: totalAmount,
             payment_method: paymentMethod,
+            intent: formData.intent,
+            experiment_flag: formData.experimentFlag,
           },
         },
         items: formData.items.map(item => ({
           item_mode: item.mode,
           catalog_item_id: item.catalogItemId || null,
-          free_text_description: item.description,
+          free_text_description: item.description + (item.notes ? `\n[ملاحظة: ${item.notes}]` : ''),
           quantity: item.quantity,
           unit: item.unit || null,
           photo_urls: item.photos || [],
@@ -220,7 +324,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
       setCreatedOrderId(result.id);
       setShowSuccessModal(true);
     } catch {
-      // Error already handled in createOrderDraft
+      // Error already handled
     }
   };
 
@@ -229,28 +333,60 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
     navigate(`/orders/${createdOrderId}`);
   };
 
+  const handleSmartHintConvert = () => {
+    updateFormData({
+      intent: 'COORDINATE',
+      orderType: 'CHAIN',
+    });
+    setShowSmartHint(false);
+  };
+
   const ArrowNext = dir === 'rtl' ? ArrowLeft : ArrowRight;
   const ArrowPrev = dir === 'rtl' ? ArrowRight : ArrowLeft;
 
+  // Check if we should show smart hint on review step
+  const shouldShowSmartHintOnReview = step === maxStep && 
+    formData.recipientType === 'THIRD_PARTY' && 
+    formData.intent !== 'COORDINATE' &&
+    !smartHintDismissed;
+
+  // Step 0: Intent Selection
+  if (step === 0) {
+    return <IntentSelection onSelect={handleIntentSelect} />;
+  }
+
+  const currentStepData = steps[step - 1];
+  const intentMetadata = formData.intent ? getIntentMetadata(formData.intent) : null;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation Bar with Back Button */}
+      {/* Top Navigation Bar */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b">
         <div className="container py-3">
           {/* Back Button Row */}
           <div className="flex items-center justify-between mb-3">
             <button
-              onClick={() => step > 1 ? handleBack() : navigate(-1)}
+              onClick={() => step > 0 ? handleBack() : navigate(-1)}
               className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowPrev className="h-4 w-4" />
               {step > 1 
                 ? (lang === 'ar' ? 'السابق' : 'Back')
-                : (lang === 'ar' ? 'إلغاء' : 'Cancel')
+                : (lang === 'ar' ? 'تغيير النوع' : 'Change Type')
               }
             </button>
-            <h2 className="text-sm font-bold">{lang === 'ar' ? 'طلب جديد' : 'New Order'}</h2>
-            <div className="w-16" /> {/* Spacer for alignment */}
+            <div className="flex items-center gap-2">
+              {intentMetadata && (
+                <span className="text-lg">{intentMetadata.emoji}</span>
+              )}
+              <h2 className="text-sm font-bold">
+                {intentMetadata 
+                  ? (lang === 'ar' ? intentMetadata.titleAr : intentMetadata.titleEn)
+                  : (lang === 'ar' ? 'طلب جديد' : 'New Order')
+                }
+              </h2>
+            </div>
+            <div className="w-16" />
           </div>
           
           {/* Progress Bar */}
@@ -280,37 +416,45 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
               </div>
             ))}
           </div>
-          <p className="text-sm font-medium text-center">{steps[step - 1].title}</p>
+          <p className="text-sm font-medium text-center">{currentStepData?.title}</p>
         </div>
       </div>
 
       {/* Step Content */}
       <div className="container py-6">
-        {step === 1 && (
-          <StepOrderType formData={formData} updateFormData={updateFormData} />
+        {/* Smart Hint */}
+        {shouldShowSmartHintOnReview && (
+          <SmartHint
+            isVisible={true}
+            onConvert={handleSmartHintConvert}
+            onDismiss={() => setSmartHintDismissed(true)}
+            suggestedIntent="COORDINATE"
+          />
         )}
-        {step === 2 && formData.orderType === 'CHAIN' ? (
-          <StepChainTasks formData={formData} updateFormData={updateFormData} />
-        ) : step === 2 ? (
+
+        {currentStepData?.key === 'source' && (
           <StepSource formData={formData} updateFormData={updateFormData} />
-        ) : null}
-        {step === 3 && (
+        )}
+        {currentStepData?.key === 'tasks' && (
+          <StepChainTasks formData={formData} updateFormData={updateFormData} />
+        )}
+        {currentStepData?.key === 'items' && (
           <StepItems formData={formData} updateFormData={updateFormData} />
         )}
-        {step === 4 && (
+        {currentStepData?.key === 'destination' && (
           <StepDestination formData={formData} updateFormData={updateFormData} />
         )}
-        {step === 5 && (
+        {currentStepData?.key === 'policies' && (
           <StepPolicies formData={formData} updateFormData={updateFormData} />
         )}
-        {step === 6 && (
+        {currentStepData?.key === 'payment' && (
           <StepPayment 
             formData={formData} 
             updateFormData={updateFormData}
             estimatedTotal={estimatedTotal}
           />
         )}
-        {step === 7 && (
+        {currentStepData?.key === 'review' && (
           <StepReview formData={formData} />
         )}
       </div>
@@ -328,7 +472,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             </button>
           )}
           
-          {step < 7 ? (
+          {step < maxStep ? (
             <button
               onClick={handleNext}
               className="flex-1 bg-gradient-gold text-primary-foreground py-3 rounded-xl font-bold shadow-gold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
@@ -359,6 +503,18 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
           )}
         </div>
       </div>
+
+      {/* Decision Prompt */}
+      {decisionPromptData && (
+        <DecisionPrompt
+          isOpen={showDecisionPrompt}
+          onClose={() => setShowDecisionPrompt(false)}
+          onAccept={handleDecisionAccept}
+          onDecline={handleDecisionDecline}
+          suggestedIntent={decisionPromptData.suggestedIntent}
+          reason={decisionPromptData.reason}
+        />
+      )}
 
       {/* Payment Modal */}
       <PaymentModal

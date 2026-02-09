@@ -3,13 +3,16 @@ import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, CreditCard } from 'lucide-react';
 import StepOrderType from './steps/StepOrderType';
 import StepSource from './steps/StepSource';
 import StepItems from './steps/StepItems';
 import StepDestination from './steps/StepDestination';
 import StepPolicies from './steps/StepPolicies';
 import StepReview from './steps/StepReview';
+import StepPayment from './steps/StepPayment';
+import PaymentModal from '@/components/payment/PaymentModal';
+import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
 import { cn } from '@/lib/utils';
 
 export interface OrderFormData {
@@ -45,6 +48,9 @@ export interface OrderFormData {
   priceCap: number | null;
   substitutionPolicy: 'NONE' | 'SAME_CATEGORY' | 'WITHIN_PRICE' | 'CUSTOM_RULES';
   notes: string;
+
+  // Step 6: Payment
+  paymentMethod?: string;
 }
 
 const initialData: OrderFormData = {
@@ -64,6 +70,7 @@ const initialData: OrderFormData = {
   priceCap: null,
   substitutionPolicy: 'NONE',
   notes: '',
+  paymentMethod: 'mada',
 };
 
 interface OrderWizardProps {
@@ -80,8 +87,17 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
     sourceMerchantId: merchantId || null,
     sourceBranchId: branchId || null,
   }));
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string>('');
 
   const createOrder = useCreateOrder();
+
+  // Calculate estimated total (demo values)
+  const estimatedTotal = formData.items.reduce((sum, item) => sum + item.quantity * 25, 0) || 50;
+  const deliveryFee = 15;
+  const serviceFee = estimatedTotal * 0.05;
+  const totalAmount = estimatedTotal + deliveryFee + serviceFee;
 
   const steps = [
     { id: 1, title: lang === 'ar' ? 'نوع الطلب' : 'Order Type' },
@@ -89,7 +105,8 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
     { id: 3, title: lang === 'ar' ? 'المنتجات' : 'Items' },
     { id: 4, title: lang === 'ar' ? 'الوجهة' : 'Destination' },
     { id: 5, title: lang === 'ar' ? 'السياسات' : 'Policies' },
-    { id: 6, title: lang === 'ar' ? 'المراجعة' : 'Review' },
+    { id: 6, title: lang === 'ar' ? 'الدفع' : 'Payment' },
+    { id: 7, title: lang === 'ar' ? 'المراجعة' : 'Review' },
   ];
 
   const updateFormData = (data: Partial<OrderFormData>) => {
@@ -97,7 +114,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   };
 
   const handleNext = () => {
-    if (step < 6) setStep(step + 1);
+    if (step < 7) setStep(step + 1);
   };
 
   const handleBack = () => {
@@ -105,8 +122,18 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   };
 
   const handleSubmit = async () => {
+    // If payment method requires online payment, show modal
+    if (formData.paymentMethod && formData.paymentMethod !== 'cash') {
+      setShowPaymentModal(true);
+    } else {
+      // Cash on delivery - create order directly
+      await createOrderDraft('cash');
+    }
+  };
+
+  const createOrderDraft = async (paymentMethod: string) => {
     try {
-      await createOrder.mutateAsync({
+      const result = await createOrder.mutateAsync({
         order: {
           order_type: formData.orderType,
           domain_id: formData.domainId || null,
@@ -123,6 +150,14 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
           purchase_price_cap: formData.priceCap,
           substitution_policy: formData.substitutionPolicy,
           notes: formData.notes,
+          status: paymentMethod === 'cash' ? 'draft' : 'paid',
+          totals_json: {
+            items: estimatedTotal,
+            delivery: deliveryFee,
+            service: serviceFee,
+            total: totalAmount,
+            payment_method: paymentMethod,
+          },
         },
         items: formData.items.map(item => ({
           item_mode: item.mode,
@@ -134,11 +169,28 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
         })),
       });
 
-      toast.success(lang === 'ar' ? 'تم إنشاء الطلب بنجاح!' : 'Order created successfully!');
-      navigate('/orders');
+      return result;
     } catch (error: any) {
       toast.error(error.message || (lang === 'ar' ? 'حدث خطأ' : 'An error occurred'));
+      throw error;
     }
+  };
+
+  const handlePaymentSuccess = async (paymentMethod: string) => {
+    setShowPaymentModal(false);
+    
+    try {
+      const result = await createOrderDraft(paymentMethod);
+      setCreatedOrderId(result.id);
+      setShowSuccessModal(true);
+    } catch {
+      // Error already handled in createOrderDraft
+    }
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    navigate(`/orders/${createdOrderId}`);
   };
 
   const ArrowNext = dir === 'rtl' ? ArrowLeft : ArrowRight;
@@ -154,7 +206,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
               <div key={s.id} className="flex items-center">
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                    "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
                     step === s.id
                       ? "bg-primary text-primary-foreground"
                       : step > s.id
@@ -162,12 +214,12 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
                       : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {step > s.id ? <Check className="h-4 w-4" /> : s.id}
+                  {step > s.id ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : s.id}
                 </div>
                 {i < steps.length - 1 && (
                   <div
                     className={cn(
-                      "w-6 sm:w-10 h-0.5 mx-1",
+                      "w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1",
                       step > s.id ? "bg-emerald" : "bg-muted"
                     )}
                   />
@@ -197,6 +249,13 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
           <StepPolicies formData={formData} updateFormData={updateFormData} />
         )}
         {step === 6 && (
+          <StepPayment 
+            formData={formData} 
+            updateFormData={updateFormData}
+            estimatedTotal={estimatedTotal}
+          />
+        )}
+        {step === 7 && (
           <StepReview formData={formData} />
         )}
       </div>
@@ -214,7 +273,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             </button>
           )}
           
-          {step < 6 ? (
+          {step < 7 ? (
             <button
               onClick={handleNext}
               className="flex-1 bg-gradient-gold text-primary-foreground py-3 rounded-xl font-bold shadow-gold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
@@ -230,16 +289,40 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             >
               {createOrder.isPending ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
+              ) : formData.paymentMethod === 'cash' ? (
                 <>
                   <Check className="h-5 w-5" />
                   {lang === 'ar' ? 'تأكيد الطلب' : 'Confirm Order'}
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  {lang === 'ar' ? `ادفع ${totalAmount.toFixed(0)} ر.س` : `Pay ${totalAmount.toFixed(0)} SAR`}
                 </>
               )}
             </button>
           )}
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        open={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={handlePaymentSuccess}
+        amount={totalAmount}
+        currency={lang === 'ar' ? 'ر.س' : 'SAR'}
+      />
+
+      {/* Success Modal */}
+      <PaymentSuccessModal
+        open={showSuccessModal}
+        onClose={handleSuccessClose}
+        orderId={createdOrderId}
+        amount={totalAmount}
+        currency={lang === 'ar' ? 'ر.س' : 'SAR'}
+        paymentMethod={formData.paymentMethod || 'cash'}
+      />
     </div>
   );
 }

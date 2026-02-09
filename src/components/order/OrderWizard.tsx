@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useLang } from '@/contexts/LangContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Check, Loader2, CreditCard } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, CreditCard, Save } from 'lucide-react';
 import IntentSelection from './IntentSelection';
 import StepSource from './steps/StepSource';
 import StepChainTasks from './steps/StepChainTasks';
@@ -26,6 +26,8 @@ import {
   getIntentMetadata,
   getTryConstraints
 } from '@/lib/orderIntentRules';
+import { useOrderDrafts, OrderDraft } from '@/hooks/useOrderDrafts';
+import { useIntentAnalytics } from '@/hooks/useIntentAnalytics';
 
 // Chain Task type for multi-step orders
 export interface ChainTask {
@@ -123,12 +125,16 @@ interface OrderWizardProps {
 export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) {
   const { lang, dir } = useLang();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftIdFromUrl = searchParams.get('draft');
+  
   const [step, setStep] = useState(0); // 0 = Intent selection
   const [formData, setFormData] = useState<OrderFormData>(() => ({
     ...initialData,
     sourceMerchantId: merchantId || null,
     sourceBranchId: branchId || null,
   }));
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
@@ -141,6 +147,34 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   const [smartHintDismissed, setSmartHintDismissed] = useState(false);
 
   const createOrder = useCreateOrder();
+  const { saveDraft, getDraft, deleteDraft } = useOrderDrafts();
+  const { trackIntentCompleted, trackIntentAbandoned, trackPromptShown, trackPromptAccepted, trackPromptDeclined } = useIntentAnalytics();
+
+  // Load draft from URL if present
+  useEffect(() => {
+    if (draftIdFromUrl) {
+      const draft = getDraft(draftIdFromUrl);
+      if (draft) {
+        setFormData(draft.formData);
+        setStep(draft.step);
+        setCurrentDraftId(draft.id);
+        toast.success(lang === 'ar' ? 'تم استعادة المسودة' : 'Draft restored');
+      }
+    }
+  }, [draftIdFromUrl, getDraft, lang]);
+
+  // Auto-save draft when form data changes (debounced)
+  useEffect(() => {
+    if (step > 0 && formData.intent) {
+      const timer = setTimeout(() => {
+        const id = saveDraft(formData, step, currentDraftId || undefined);
+        if (!currentDraftId) {
+          setCurrentDraftId(id);
+        }
+      }, 2000); // Save after 2 seconds of inactivity
+      return () => clearTimeout(timer);
+    }
+  }, [formData, step, saveDraft, currentDraftId]);
 
   // Calculate estimated total (demo values)
   const estimatedTotal = formData.items.reduce((sum, item) => sum + item.quantity * 25, 0) || 50;
@@ -211,6 +245,9 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
     const prompt = shouldShowPrompt(state);
 
     if (prompt.show && prompt.suggestedIntent && !smartHintDismissed) {
+      // Track prompt shown
+      trackPromptShown(formData.intent || 'TASK', prompt.suggestedIntent, prompt.reason || 'unknown');
+      
       if (prompt.autoConvert) {
         // Auto-convert with notification
         setDecisionPromptData({
@@ -239,6 +276,9 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
 
   const handleDecisionAccept = () => {
     if (decisionPromptData) {
+      // Track prompt accepted
+      trackPromptAccepted(formData.intent || 'TASK', decisionPromptData.suggestedIntent);
+      
       const newState = applyConversion(getOrderState(), decisionPromptData.suggestedIntent);
       updateFormData({
         intent: newState.intent,
@@ -253,12 +293,34 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
   };
 
   const handleDecisionDecline = () => {
+    // Track prompt declined
+    if (decisionPromptData) {
+      trackPromptDeclined(formData.intent || 'TASK', decisionPromptData.suggestedIntent);
+    }
+    
     setShowDecisionPrompt(false);
     setDecisionPromptData(null);
     setSmartHintDismissed(true);
     // Continue to next step anyway
     if (step < maxStep) setStep(step + 1);
   };
+
+  // Handle draft restoration from IntentSelection
+  const handleRestoreDraft = useCallback((draft: OrderDraft) => {
+    setFormData(draft.formData);
+    setStep(draft.step);
+    setCurrentDraftId(draft.id);
+    toast.success(lang === 'ar' ? 'تم استعادة المسودة' : 'Draft restored');
+  }, [lang]);
+
+  // Manual save draft
+  const handleSaveDraft = useCallback(() => {
+    if (formData.intent) {
+      const id = saveDraft(formData, step, currentDraftId || undefined);
+      setCurrentDraftId(id);
+      toast.success(lang === 'ar' ? 'تم حفظ المسودة' : 'Draft saved');
+    }
+  }, [formData, step, saveDraft, currentDraftId, lang]);
 
   const handleSubmit = async () => {
     if (formData.paymentMethod && formData.paymentMethod !== 'cash') {
@@ -309,6 +371,16 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
         })),
       });
 
+      // Track intent completion
+      if (formData.intent) {
+        trackIntentCompleted(formData.intent, formData.orderType);
+      }
+
+      // Delete the draft after successful order creation
+      if (currentDraftId) {
+        deleteDraft(currentDraftId);
+      }
+
       return result;
     } catch (error: any) {
       toast.error(error.message || (lang === 'ar' ? 'حدث خطأ' : 'An error occurred'));
@@ -352,7 +424,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
 
   // Step 0: Intent Selection
   if (step === 0) {
-    return <IntentSelection onSelect={handleIntentSelect} />;
+    return <IntentSelection onSelect={handleIntentSelect} onRestoreDraft={handleRestoreDraft} />;
   }
 
   const currentStepData = steps[step - 1];
@@ -386,7 +458,14 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
                 }
               </h2>
             </div>
-            <div className="w-16" />
+            {/* Save Draft Button */}
+            <button
+              onClick={handleSaveDraft}
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              title={lang === 'ar' ? 'حفظ كمسودة' : 'Save as draft'}
+            >
+              <Save className="h-4 w-4" />
+            </button>
           </div>
           
           {/* Progress Bar */}

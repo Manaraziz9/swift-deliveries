@@ -11,11 +11,13 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur-xl safe-area-top">
       <div className="container flex items-center justify-between h-16">
-        {/* YA Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-ya-md bg-ya-gradient flex items-center justify-center shadow-ya-sm transition-all duration-200 group-hover:shadow-ya-md group-hover:scale-105">
-            <span className="text-white font-bold text-lg tracking-tight font-en">YA</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-ya-accent absolute -top-0.5 -right-0.5" />
+        {/* YA Logo - LOCKED DESIGN */}
+        <Link to="/" className="flex items-center gap-1 group">
+          <div className="flex items-center">
+            <span className="text-2xl font-bold text-ya-primary tracking-tight font-en group-hover:text-ya-accent transition-colors duration-200">
+              YA
+            </span>
+            <span className="w-2 h-2 rounded-full bg-ya-highlight ms-0.5 mt-0.5 group-hover:scale-110 transition-transform duration-200" />
           </div>
         </Link>
         

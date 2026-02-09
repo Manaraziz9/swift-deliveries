@@ -10,9 +10,10 @@
     --font-ar: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
     --font-en: 'Inter', system-ui, -apple-system, sans-serif;
 
-    /* YA Brand Colors - HSL format */
-    --ya-primary: 222 38% 19%;
-    --ya-accent: 171 78% 40%;
+    /* YA Brand Colors - HSL format (LOCKED) */
+    --ya-primary: 222 38% 19%;      /* #1F2A44 - Deep Indigo */
+    --ya-accent: 171 78% 40%;       /* #14B8A6 - Teal (Action) */
+    --ya-highlight: 45 88% 63%;     /* #F2C94C - Soft Gold (UPDATED) */
     --ya-highlight: 38 91% 50%;
 
     /* Base */
@@ -40,7 +41,7 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 91% 50%;
+    --warning: 45 88% 63%;
     --warning-foreground: 222 47% 11%;
 
     --success: 142 71% 45%;
@@ -73,7 +74,7 @@
     /* Gradients */
     --gradient-ya: linear-gradient(135deg, hsl(222 38% 19%) 0%, hsl(222 30% 28%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(171 78% 40%) 0%, hsl(171 68% 50%) 100%);
-    --gradient-highlight: linear-gradient(135deg, hsl(38 91% 50%) 0%, hsl(38 85% 60%) 100%);
+    --gradient-highlight: linear-gradient(135deg, hsl(45 88% 63%) 0%, hsl(45 80% 70%) 100%);
   }
 
   .dark {
@@ -93,7 +94,7 @@
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
-    --warning: 38 91% 50%;
+    --warning: 45 88% 63%;
     --warning-foreground: 222 47% 11%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -216,6 +217,27 @@
     50% { opacity: 1; }
   }
 
+  /* Splash Screen Animations - Call → Act → Done */
+  @keyframes splash-dot-appear {
+    0% { opacity: 0; transform: scale(0.5); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes splash-dot-gold {
+    0% { opacity: 0; transform: scale(0.5); }
+    40% { opacity: 1; transform: scale(1); }
+    50% { transform: scale(1.3); }
+    60% { transform: scale(1); }
+    70% { transform: scale(1.2); }
+    80% { transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes splash-dot-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.9; }
+  }
+
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
   }
@@ -230,6 +252,18 @@
   
   .animate-pulse-soft {
     animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  .animate-splash-dot-appear {
+    animation: splash-dot-appear 0.3s ease-out forwards;
+  }
+
+  .animate-splash-dot-gold {
+    animation: splash-dot-gold 1s ease-out forwards;
+  }
+
+  .animate-splash-dot-pulse {
+    animation: splash-dot-pulse 0.6s ease-in-out 2;
   }
 
   /* Safe area */

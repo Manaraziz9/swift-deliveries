@@ -13,6 +13,7 @@ import MerchantPage from "./pages/MerchantPage";
 import OrdersPage from "./pages/OrdersPage";
 import ProfilePage from "./pages/ProfilePage";
 import AuthPage from "./pages/AuthPage";
+import SettingsPage from "./pages/SettingsPage";
 import CreateOrderPage from "./pages/CreateOrderPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
 import MerchantDashboard from "./pages/merchant/MerchantDashboard";
@@ -61,6 +62,7 @@ const App = () => {
                 <Route path="/orders" element={<OrdersPage />} />
                 <Route path="/orders/:id" element={<OrderTrackingPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/create-order" element={<CreateOrderPage />} />
                 {/* Merchant Portal */}

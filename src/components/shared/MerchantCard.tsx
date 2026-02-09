@@ -1,5 +1,5 @@
 import { useLang } from '@/contexts/LangContext';
-import { MapPin, Clock, BadgeCheck, Navigation } from 'lucide-react';
+import { MapPin, Clock, BadgeCheck, Navigation, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QualityBadge from './QualityBadge';
 import { cn } from '@/lib/utils';
@@ -46,59 +46,82 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
   return (
     <Link
       to={`/merchant/${merchant.id}`}
-      className="block rounded-xl bg-card shadow-card overflow-hidden hover:shadow-lg transition-all animate-fade-in group"
-      style={{ animationDelay: `${index * 0.06}s` }}
+      className="card-premium group block animate-fade-in"
+      style={{ animationDelay: `${index * 0.08}s` }}
     >
-      {/* Color bar */}
-      <div className="h-1.5 bg-gradient-gold" />
-      
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            {merchant.logo_url && (
-              <img 
-                src={merchant.logo_url} 
-                alt="" 
-                className="w-10 h-10 rounded-lg object-cover shrink-0"
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-1">
-                <h4 className="font-bold text-sm truncate">{name}</h4>
-                {isVerified && <BadgeCheck className="h-4 w-4 text-emerald shrink-0" />}
-              </div>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Logo */}
+            <div className="relative shrink-0">
+              {merchant.logo_url ? (
+                <img 
+                  src={merchant.logo_url} 
+                  alt="" 
+                  className="w-14 h-14 rounded-xl object-cover ring-2 ring-border group-hover:ring-primary/30 transition-all duration-300"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-gradient-gold-static flex items-center justify-center text-primary-foreground font-bold text-lg">
+                  {name.charAt(0)}
+                </div>
+              )}
+              {isVerified && (
+                <div className="absolute -bottom-1 -end-1 bg-emerald rounded-full p-0.5">
+                  <BadgeCheck className="h-4 w-4 text-white" />
+                </div>
+              )}
+            </div>
+            
+            {/* Info */}
+            <div className="flex-1 min-w-0 pt-1">
+              <h4 className="font-bold text-base truncate group-hover:text-primary transition-colors">
+                {name}
+              </h4>
               {address && (
-                <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3 shrink-0" />
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{address}</span>
                 </p>
               )}
             </div>
           </div>
+          
+          {/* Quality badge */}
           {quality?.composite_score ? (
             <QualityBadge score={quality.composite_score} size="sm" />
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {branch && (
-            <span className={cn(
-              "flex items-center gap-1",
-              branch.open_now ? "text-emerald" : "text-destructive"
-            )}>
-              <Clock className="h-3 w-3" />
-              {branch.open_now ? t('openNow') : t('closed')}
-            </span>
-          )}
-          {distance !== undefined && distance !== null && (
-            <span className="flex items-center gap-1 text-primary">
-              <Navigation className="h-3 w-3" />
-              {formatDistance(distance)}
-            </span>
-          )}
-          {quality?.internal_count ? (
-            <span>{quality.internal_count} {t('reviews')}</span>
-          ) : null}
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 text-sm">
+            {branch && (
+              <span className={cn(
+                "flex items-center gap-1.5 font-medium",
+                branch.open_now ? "text-emerald" : "text-destructive"
+              )}>
+                <span className={cn(
+                  "w-2 h-2 rounded-full",
+                  branch.open_now ? "bg-emerald animate-pulse" : "bg-destructive"
+                )} />
+                {branch.open_now ? t('openNow') : t('closed')}
+              </span>
+            )}
+            {distance !== undefined && distance !== null && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Navigation className="h-3.5 w-3.5" />
+                {formatDistance(distance)}
+              </span>
+            )}
+            {quality?.internal_count ? (
+              <span className="text-muted-foreground">{quality.internal_count} {t('reviews')}</span>
+            ) : null}
+          </div>
+          
+          {/* Arrow indicator */}
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+            <ArrowUpRight className="h-4 w-4" />
+          </div>
         </div>
       </div>
     </Link>

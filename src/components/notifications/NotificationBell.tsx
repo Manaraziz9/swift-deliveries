@@ -41,10 +41,10 @@ export default function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="relative p-2 rounded-full hover:bg-muted transition-colors">
-          <Bell className="h-5 w-5 text-foreground" />
+        <button className="relative p-2.5 rounded-xl bg-muted/80 hover:bg-muted transition-all duration-200">
+          <Bell className="h-5 w-5 text-muted-foreground" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center px-1">
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] bg-gradient-gold-static text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1.5 shadow-gold animate-scale-bounce">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
@@ -52,19 +52,19 @@ export default function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent 
         align="end" 
-        className="w-80 p-0"
-        sideOffset={8}
+        className="w-80 p-0 rounded-2xl shadow-card-hover border-0"
+        sideOffset={12}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h3 className="font-bold text-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b bg-muted/30 rounded-t-2xl">
+          <h3 className="font-bold">
             {lang === 'ar' ? 'الإشعارات' : 'Notifications'}
           </h3>
           {unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead.mutate()}
-              className="text-xs text-primary hover:underline flex items-center gap-1"
+              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1.5 font-medium transition-colors"
             >
-              <CheckCheck className="h-3 w-3" />
+              <CheckCheck className="h-3.5 w-3.5" />
               {lang === 'ar' ? 'قراءة الكل' : 'Mark all read'}
             </button>
           )}

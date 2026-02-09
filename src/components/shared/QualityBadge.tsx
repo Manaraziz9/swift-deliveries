@@ -9,18 +9,24 @@ interface QualityBadgeProps {
 
 export default function QualityBadge({ score, size = 'md', className }: QualityBadgeProps) {
   const sizes = {
-    sm: 'text-xs px-1.5 py-0.5 gap-0.5',
-    md: 'text-sm px-2 py-1 gap-1',
-    lg: 'text-base px-3 py-1.5 gap-1.5',
+    sm: 'text-xs px-2.5 py-1 gap-1',
+    md: 'text-sm px-3 py-1.5 gap-1.5',
+    lg: 'text-base px-4 py-2 gap-2',
+  };
+
+  const iconSizes = {
+    sm: 'h-3.5 w-3.5',
+    md: 'h-4 w-4',
+    lg: 'h-5 w-5',
   };
 
   return (
     <span className={cn(
-      "inline-flex items-center rounded-full font-semibold bg-gradient-gold text-primary-foreground",
+      "inline-flex items-center rounded-xl font-bold bg-gradient-gold-static text-primary-foreground shadow-gold",
       sizes[size],
       className
     )}>
-      <Star className={cn("fill-current", size === 'sm' ? 'h-3 w-3' : size === 'md' ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
+      <Star className={cn("fill-current", iconSizes[size])} />
       {score.toFixed(1)}
     </span>
   );

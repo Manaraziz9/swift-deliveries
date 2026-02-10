@@ -25,12 +25,12 @@ export default function HeroSection() {
         <p className="text-white text-xl sm:text-2xl lg:text-3xl font-bold font-ar">
           طلباتك أوامر
         </p>
-        <p className="text-white/80 text-base sm:text-lg font-en tracking-wide">
+        <p className="text-white/70 text-base sm:text-lg font-en tracking-wide">
           When you call, we act.
         </p>
       </div>
 
-      {/* Single CTA — Pill shape, Deep Orange */}
+      {/* Single CTA — Pill shape, Rose */}
       <button onClick={handleCTA} disabled={pressed} className="mt-10 sm:mt-12 bg-ya-accent text-white text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-[0.94] hover:shadow-ya-md active:scale-[0.98]">
         {pressed ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…' : dir === 'rtl' ? 'اطلب الآن' : 'Order Now'}
       </button>

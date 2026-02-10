@@ -61,13 +61,13 @@ export default {
   		},
   		colors: {
   			ya: {
-  				primary: 'hsl(25 95% 53%)',
-  				accent: 'hsl(20 91% 48%)',
+  				primary: 'hsl(20 14% 10%)',
+  				accent: 'hsl(347 77% 50%)',
   				highlight: 'hsl(48 96% 53%)',
-  				bg: 'hsl(33 100% 96%)',
-  				text: 'hsl(221 39% 11%)',
-  				text2: 'hsl(220 9% 46%)',
-  				border: 'hsl(30 20% 88%)',
+  				bg: 'hsl(0 0% 98%)',
+  				text: 'hsl(20 14% 10%)',
+  				text2: 'hsl(24 6% 45%)',
+  				border: 'hsl(20 6% 85%)',
   				success: 'hsl(142 76% 36%)',
   				error: 'hsl(0 84% 50%)'
   			},

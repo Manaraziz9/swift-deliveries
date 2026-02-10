@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import HeroSection from '@/components/home/HeroSection';
-
+import LastOrderStrip from '@/components/home/LastOrderStrip';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const NearYouSection = lazy(() => import('@/components/home/NearYouSection'));
@@ -29,7 +29,7 @@ export default function Index() {
       <TopBar />
       <main>
         <HeroSection />
-        
+        <LastOrderStrip />
         <Suspense fallback={<SectionSkeleton />}>
           <NearYouSection />
         </Suspense>

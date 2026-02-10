@@ -611,6 +611,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_locations: {
+        Row: {
+          address_text: string | null
+          address_text_ar: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_default: boolean
+          label: string
+          lat: number | null
+          lng: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_text?: string | null
+          address_text_ar?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_default?: boolean
+          label: string
+          lat?: number | null
+          lng?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_text?: string | null
+          address_text_ar?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_default?: boolean
+          label?: string
+          lat?: number | null
+          lng?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

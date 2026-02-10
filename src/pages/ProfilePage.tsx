@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
+import MyLocationsSection from '@/components/location/MyLocationsSection';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,9 +63,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="min-h-screen pb-20">
@@ -89,48 +88,59 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Info Cards */}
-      <div className="container py-6 space-y-3">
-        <div className="rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Mail className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</p>
-            <p className="font-medium text-sm">{user.email}</p>
-          </div>
-        </div>
-
-        {profile?.phone && (
+      <div className="container py-6 space-y-6">
+        {/* Info Cards */}
+        <div className="space-y-3">
           <div className="rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
-              <Phone className="h-5 w-5 text-success" />
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Mail className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الهاتف' : 'Phone'}</p>
-              <p className="font-medium text-sm">{profile.phone}</p>
+              <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</p>
+              <p className="font-medium text-sm">{user.email}</p>
             </div>
           </div>
-        )}
 
-        <button className="w-full rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-            <Settings className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <span className="font-medium text-sm">{lang === 'ar' ? 'الإعدادات' : 'Settings'}</span>
-        </button>
+          {profile?.phone && (
+            <div className="rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
+                <Phone className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الهاتف' : 'Phone'}</p>
+                <p className="font-medium text-sm">{profile.phone}</p>
+              </div>
+            </div>
+          )}
+        </div>
 
-        <button
-          onClick={handleSignOut}
-          className="w-full rounded-xl bg-destructive/10 p-4 flex items-center gap-3 hover:bg-destructive/20 transition-colors"
-        >
-          <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center">
-            <LogOut className="h-5 w-5 text-destructive" />
-          </div>
-          <span className="font-medium text-sm text-destructive">
-            {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
-          </span>
-        </button>
+        {/* My Locations */}
+        <MyLocationsSection />
+
+        {/* Actions */}
+        <div className="space-y-3">
+          <button
+            onClick={() => navigate('/settings')}
+            className="w-full rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+              <Settings className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <span className="font-medium text-sm">{lang === 'ar' ? 'الإعدادات' : 'Settings'}</span>
+          </button>
+
+          <button
+            onClick={handleSignOut}
+            className="w-full rounded-xl bg-destructive/10 p-4 flex items-center gap-3 hover:bg-destructive/20 transition-colors"
+          >
+            <div className="h-10 w-10 rounded-full bg-destructive/20 flex items-center justify-center">
+              <LogOut className="h-5 w-5 text-destructive" />
+            </div>
+            <span className="font-medium text-sm text-destructive">
+              {lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
+            </span>
+          </button>
+        </div>
       </div>
 
       <BottomNav />

@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Loader2, Camera, MapPin, Navigation, Clock, Users, Zap, CreditCard } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, Camera, MapPin, Navigation, Clock, Users, Zap, CreditCard, PhoneOff, Home, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMerchant, useBranches } from '@/hooks/useMerchants';
+import { useUserLocations, SavedLocation } from '@/hooks/useUserLocations';
 import { toast } from 'sonner';
 import PaymentModal from '@/components/payment/PaymentModal';
 import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
@@ -20,7 +21,8 @@ type FlowStep = 'confirm' | 'what' | 'where' | 'purchase' | 'extra_step' | 'urge
 interface StepData {
   description: string;
   photos: string[];
-  deliveryType: 'my_location' | 'other';
+  deliveryType: 'my_location' | 'other' | 'saved';
+  selectedLocationId: string | null;
   dropoffAddress: string;
   dropoffLat: number | null;
   dropoffLng: number | null;
@@ -30,6 +32,7 @@ interface StepData {
   extraSteps: { description: string; recipientName: string; recipientPhone: string; address: string }[];
   isUrgent: boolean;
   splitExecutors: boolean;
+  noContact: boolean;
   paymentMethod: string;
 }
 
@@ -37,6 +40,7 @@ const initialStepData: StepData = {
   description: '',
   photos: [],
   deliveryType: 'my_location',
+  selectedLocationId: null,
   dropoffAddress: '',
   dropoffLat: null,
   dropoffLng: null,
@@ -46,6 +50,7 @@ const initialStepData: StepData = {
   extraSteps: [],
   isUrgent: false,
   splitExecutors: false,
+  noContact: false,
   paymentMethod: 'mada',
 };
 
@@ -64,9 +69,23 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
   const { latitude, longitude, loading: geoLoading, requestLocation, hasLocation } = useGeolocation();
   const { data: merchant } = useMerchant(merchantId);
   const { data: branches } = useBranches(merchantId);
+  const { locations: savedLocations, defaultLocation } = useUserLocations();
 
   const ArrowBack = dir === 'rtl' ? ArrowRight : ArrowLeft;
   const ArrowNext = dir === 'rtl' ? ArrowLeft : ArrowRight;
+
+  // Price estimate
+  const priceEstimate = useMemo(() => {
+    let base = 15;
+    if (data.hasPurchase) base += 10;
+    if (data.extraSteps.length > 0) base += data.extraSteps.length * 8;
+    if (data.isUrgent) base = Math.round(base * 1.5);
+    const low = base;
+    const high = Math.round(base * 1.6);
+    return { low, high };
+  }, [data.hasPurchase, data.extraSteps.length, data.isUrgent]);
+
+  const ICON_MAP: Record<string, any> = { home: Home, work: Briefcase, 'map-pin': MapPin };
 
   const merchantName = merchant
     ? (lang === 'ar' && merchant.business_name_ar ? merchant.business_name_ar : merchant.business_name)
@@ -234,21 +253,62 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
             <h2 className="text-xl font-bold">
               {lang === 'ar' ? 'التوصيل وين؟' : 'Where to deliver?'}
             </h2>
+            
+            {/* Default / My location */}
             <button
-              onClick={handleUseLocation}
+              onClick={() => {
+                if (defaultLocation) {
+                  update({ deliveryType: 'saved', selectedLocationId: defaultLocation.id, dropoffAddress: defaultLocation.address_text || '', dropoffLat: defaultLocation.lat, dropoffLng: defaultLocation.lng });
+                } else {
+                  handleUseLocation();
+                }
+              }}
               disabled={geoLoading}
               className={cn(
                 "w-full p-4 rounded-2xl border-2 flex items-center gap-3 transition-all",
-                data.deliveryType === 'my_location' 
+                (data.deliveryType === 'my_location' || (data.deliveryType === 'saved' && data.selectedLocationId === defaultLocation?.id))
                   ? "border-primary bg-primary/5" 
                   : "border-border hover:border-primary/50"
               )}
             >
               {geoLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Navigation className="h-5 w-5 text-primary" />}
-              <span className="font-medium">{lang === 'ar' ? 'موقعي' : 'My location'}</span>
+              <div className="text-start">
+                <span className="font-medium block">{lang === 'ar' ? 'موقعي' : 'My location'}</span>
+                {defaultLocation && (
+                  <span className="text-xs text-muted-foreground">{defaultLocation.label} — {defaultLocation.address_text}</span>
+                )}
+              </div>
             </button>
+
+            {/* Saved locations */}
+            {savedLocations.filter(l => l.id !== defaultLocation?.id).length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground px-1">{lang === 'ar' ? 'مواقع محفوظة' : 'Saved locations'}</p>
+                {savedLocations.filter(l => l.id !== defaultLocation?.id).map(loc => {
+                  const IconComp = ICON_MAP[loc.icon || 'map-pin'] || MapPin;
+                  return (
+                    <button
+                      key={loc.id}
+                      onClick={() => update({ deliveryType: 'saved', selectedLocationId: loc.id, dropoffAddress: loc.address_text || '', dropoffLat: loc.lat, dropoffLng: loc.lng })}
+                      className={cn(
+                        "w-full p-3 rounded-xl border flex items-center gap-3 transition-all",
+                        data.selectedLocationId === loc.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <IconComp className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="text-start min-w-0">
+                        <p className="text-sm font-medium">{loc.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{lang === 'ar' ? loc.address_text_ar || loc.address_text : loc.address_text}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Other location */}
             <button
-              onClick={() => update({ deliveryType: 'other' })}
+              onClick={() => update({ deliveryType: 'other', selectedLocationId: null })}
               className={cn(
                 "w-full p-4 rounded-2xl border-2 flex items-center gap-3 transition-all",
                 data.deliveryType === 'other'
@@ -403,7 +463,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           </div>
         )}
 
-        {/* Step 5 — Urgency */}
+        {/* Step 5 — Urgency + Preferences */}
         {step === 'urgency' && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold">
@@ -434,14 +494,14 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
             {data.isUrgent && data.extraSteps.length > 0 && (
               <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 animate-fade-in">
                 <p className="text-sm font-medium mb-3">
-                  {lang === 'ar' ? 'تبغى نقسمها على أكثر من مندوب؟' : 'Split between multiple executors?'}
+                  {lang === 'ar' ? 'نقدر نقسم المهام على أكثر من مندوب عشان تخلص أسرع' : 'We can split tasks between executors for faster delivery'}
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => update({ splitExecutors: true })}
                     className={cn("flex-1 py-2.5 rounded-xl border text-sm font-medium", data.splitExecutors ? "bg-primary text-primary-foreground" : "border-border")}
                   >
-                    {lang === 'ar' ? 'نعم' : 'Yes'}
+                    {lang === 'ar' ? 'موافق' : 'Yes'}
                   </button>
                   <button
                     onClick={() => update({ splitExecutors: false })}
@@ -452,6 +512,37 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                 </div>
               </div>
             )}
+
+            {/* No-contact preference */}
+            <button
+              onClick={() => update({ noContact: !data.noContact })}
+              className={cn(
+                "w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all",
+                data.noContact ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+              )}
+            >
+              <PhoneOff className={cn("h-5 w-5 shrink-0", data.noContact ? "text-primary" : "text-muted-foreground")} />
+              <div className="text-start flex-1">
+                <p className="text-sm font-medium">{lang === 'ar' ? 'ما أحب المكالمات' : "Don't call me"}</p>
+                <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'المندوب يلتزم بالتعليمات فقط' : 'Executor follows instructions only'}</p>
+              </div>
+              <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", data.noContact ? "bg-primary border-primary" : "border-muted-foreground/30")}>
+                {data.noContact && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+            </button>
+
+            {/* Price estimate hint */}
+            <div className="rounded-2xl bg-ya-highlight/10 border border-ya-highlight/20 p-4">
+              <p className="text-sm font-medium text-foreground">
+                {lang === 'ar' ? 'التكلفة المتوقعة:' : 'Estimated cost:'}
+                <span className="font-bold text-primary ms-2">
+                  {priceEstimate.low} – {priceEstimate.high} {lang === 'ar' ? 'ر.س' : 'SAR'}
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lang === 'ar' ? 'السعر النهائي يحدد بعد المراجعة' : 'Final price determined after review'}
+              </p>
+            </div>
           </div>
         )}
 
@@ -473,7 +564,13 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'التوصيل' : 'Delivery'}</p>
-                <p className="text-sm">{data.deliveryType === 'my_location' ? (lang === 'ar' ? 'موقعي' : 'My location') : data.dropoffAddress}</p>
+                <p className="text-sm">
+                  {data.deliveryType === 'saved' 
+                    ? savedLocations.find(l => l.id === data.selectedLocationId)?.label || data.dropoffAddress
+                    : data.deliveryType === 'my_location' 
+                      ? (lang === 'ar' ? 'موقعي' : 'My location') 
+                      : data.dropoffAddress}
+                </p>
               </div>
               {data.hasPurchase && (
                 <div>
@@ -495,6 +592,20 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                   {lang === 'ar' ? 'مستعجل' : 'Urgent'}
                 </div>
               )}
+              {data.noContact && (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <PhoneOff className="h-4 w-4" />
+                  {lang === 'ar' ? 'بدون اتصال' : 'No calls'}
+                </div>
+              )}
+            </div>
+
+            {/* Price estimate */}
+            <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 text-center">
+              <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'التكلفة المتوقعة' : 'Estimated cost'}</p>
+              <p className="text-2xl font-bold text-primary mt-1">
+                {priceEstimate.low} – {priceEstimate.high} {lang === 'ar' ? 'ر.س' : 'SAR'}
+              </p>
             </div>
           </div>
         )}

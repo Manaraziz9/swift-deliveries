@@ -4,22 +4,22 @@ import { cn } from '@/lib/utils';
 
 const stats = [
   { 
-    value: '500+', 
-    labelAr: 'محل شريك', 
-    labelEn: 'Partner Stores',
-    icon: Store,
+    value: '4.8', 
+    labelAr: 'تقييم', 
+    labelEn: 'Rating',
+    icon: Star,
   },
   { 
-    value: '10K+', 
-    labelAr: 'طلب منفّذ', 
-    labelEn: 'Orders Completed',
+    value: '+10K', 
+    labelAr: 'مهمة تمّت', 
+    labelEn: 'Tasks Done',
     icon: Package,
   },
   { 
-    value: '4.8', 
-    labelAr: 'تقييم العملاء', 
-    labelEn: 'Customer Rating',
-    icon: Star,
+    value: '+500', 
+    labelAr: 'جهة معنا', 
+    labelEn: 'Partners',
+    icon: Store,
   },
 ];
 

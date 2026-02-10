@@ -55,8 +55,8 @@ export default function SmartHint({
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">
             {lang === 'ar'
-              ? 'طلبك فيه طرف ثالث. غالبًا راح يكون أنسب إذا حوّلناه إلى «نسّقها لي» عشان نضيف إثباتات وتسليم منظم.'
-              : 'Your order involves a third party. It would be better to convert it to "Coordinate for Me" to add proofs and organized delivery.'}
+              ? 'بس تنبيه 👀 طلبك فيه طرف ثاني، وغالبًا بيكون أسهل لو نسّقناها لك.'
+              : 'Heads up 👀 Your order involves another party. It would be easier if we coordinate it for you.'}
           </p>
 
           {/* Actions */}

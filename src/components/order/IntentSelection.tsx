@@ -195,7 +195,7 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
             {lang === 'ar' ? 'وش حاب تسوي اليوم؟' : 'What would you like to do today?'}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {lang === 'ar' ? 'اضغط مطولاً لمعرفة المزيد عن كل خيار' : 'Long press for more info about each option'}
+            {lang === 'ar' ? 'قل يا… وYA تتحرّك' : 'Say YA… and we move'}
           </p>
         </div>
 

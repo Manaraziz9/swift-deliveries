@@ -1,7 +1,7 @@
 const translations = {
   ar: {
     appName: 'YA',
-    tagline: 'قل YA. والباقي علينا',
+    tagline: 'قل يا… وخلّها علينا',
     home: 'الرئيسية',
     search: 'البحث',
     orders: 'طلباتي',
@@ -44,7 +44,7 @@ const translations = {
     tryBeforeBuy: 'جرّب قبل ما تشتري',
     // Status messages
     success: 'تمّت ✅',
-    failed: 'ما ضبطت… خلّنا نرتّبها',
+    failed: 'ما ضبطت… خلّنا نعيدها مع بعض',
     inProgress: 'YA شغّالة على طلبك',
     suggestion: 'نقترح خيار أفضل لطلبك',
   },
@@ -92,7 +92,7 @@ const translations = {
     tryBeforeBuy: 'Try Before You Buy',
     // Status messages
     success: 'Done ✅',
-    failed: "Didn't work… let's fix it",
+    failed: "Didn't work… let's try again together",
     inProgress: 'YA is working on your order',
     suggestion: 'We suggest a better option for your order',
   },

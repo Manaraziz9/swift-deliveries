@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
 
 export default function HeroSection() {
   const { dir } = useLang();
@@ -32,11 +33,22 @@ export default function HeroSection() {
         </p>
       </div>
 
+      {/* Search Bar */}
+      <div
+        onClick={() => navigate('/search')}
+        className="mt-8 sm:mt-10 w-full max-w-md mx-auto flex items-center gap-3 bg-card border border-border rounded-full px-5 py-3 cursor-pointer hover:border-primary/40 transition-colors"
+      >
+        <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+        <span className="text-muted-foreground text-sm sm:text-base font-ar">
+          {dir === 'rtl' ? 'وش تبغى نخلّصه؟' : 'What do you need done?'}
+        </span>
+      </div>
+
       {/* Single CTA — Muted Orange pill */}
       <button
         onClick={handleCTA}
         disabled={pressed}
-        className="mt-10 sm:mt-12 bg-primary text-primary-foreground text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-95 hover:shadow-ya-md active:scale-[0.98]"
+        className="mt-6 sm:mt-8 bg-primary text-primary-foreground text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-95 hover:shadow-ya-md active:scale-[0.98]"
       >
         {pressed
           ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…'

@@ -11,7 +11,7 @@ export default function HeroSection() {
     setPressed(true);
     setTimeout(() => navigate('/create-order'), 600);
   };
-  return <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-[linear-gradient(180deg,hsl(222_38%_19%)_0%,hsl(222_32%_26%)_100%)] bg-purple-400">
+  return <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-ya-primary">
       {/* YA• — Hero of the scene */}
       <div className="flex items-center gap-1 animate-hero-ya">
         <span className="text-[5.5rem] sm:text-[7rem] lg:text-[9rem] font-bold text-white tracking-tight font-en leading-none">
@@ -20,19 +20,19 @@ export default function HeroSection() {
         <span className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 rounded-full bg-ya-highlight mt-3 sm:mt-4 animate-hero-dot" />
       </div>
 
-      {/* Taglines — English first, Arabic second */}
+      {/* Taglines — Arabic first (bold), English second */}
       <div className="text-center mt-8 sm:mt-10 space-y-2 animate-hero-text">
-        <p className="text-white/90 text-lg sm:text-xl lg:text-2xl font-medium font-en tracking-wide">
-          When you call, we act.
+        <p className="text-white text-xl sm:text-2xl lg:text-3xl font-bold font-ar">
+          طلباتك أوامر
         </p>
-        <p className="text-white/70 text-base sm:text-lg font-ar">
-          قل يا… وخلّها علينا
+        <p className="text-white/80 text-base sm:text-lg font-en tracking-wide">
+          When you call, we act.
         </p>
       </div>
 
-      {/* Single CTA — Pill shape */}
+      {/* Single CTA — Pill shape, Deep Orange */}
       <button onClick={handleCTA} disabled={pressed} className="mt-10 sm:mt-12 bg-ya-accent text-white text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-[0.94] hover:shadow-ya-md active:scale-[0.98]">
-        {pressed ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…' : dir === 'rtl' ? 'قل YA' : 'Say YA'}
+        {pressed ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…' : dir === 'rtl' ? 'اطلب الآن' : 'Order Now'}
       </button>
     </section>;
 }

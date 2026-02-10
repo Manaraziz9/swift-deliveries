@@ -31,13 +31,13 @@ export default function DomainTiles() {
               "group relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl",
               "bg-card border border-border/40",
               "transition-all duration-300 ease-out",
-              "hover:bg-ya-primary hover:border-ya-primary hover:shadow-ya-md hover:-translate-y-1",
+              "hover:bg-ya-accent hover:border-ya-accent hover:shadow-ya-md hover:-translate-y-1",
               "animate-fade-in-up"
             )}
             style={{ animationDelay: `${i * 0.06}s` }}
           >
             <Icon
-              className="h-8 w-8 text-ya-accent transition-colors duration-300 group-hover:text-ya-highlight"
+              className="h-8 w-8 text-ya-primary transition-colors duration-300 group-hover:text-ya-highlight"
               strokeWidth={1.8}
             />
             <span className="text-sm font-semibold text-center leading-tight text-foreground transition-colors duration-300 group-hover:text-white">

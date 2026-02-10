@@ -5,39 +5,42 @@ import { Link } from 'react-router-dom';
 import type { TranslationKey } from '@/lib/i18n';
 
 const domains = [
-  { code: 'TASK_EXECUTION', icon: Truck, labelKey: 'taskExecution' as TranslationKey, color: 'text-primary' },
-  { code: 'ASSISTED_PURCHASING', icon: ShoppingBag, labelKey: 'assistedPurchasing' as TranslationKey, color: 'text-ya-accent' },
-  { code: 'MARKET_DISCOVERY', icon: Compass, labelKey: 'marketDiscovery' as TranslationKey, color: 'text-muted-foreground' },
-  { code: 'QUALITY_LAYER', icon: Star, labelKey: 'qualityReviews' as TranslationKey, color: 'text-ya-highlight' },
-  { code: 'ONSITE_SERVICES', icon: Wrench, labelKey: 'onsiteServices' as TranslationKey, color: 'text-secondary-foreground' },
-  { code: 'SME_SUPPORT', icon: Briefcase, labelKey: 'smeSupport' as TranslationKey, color: 'text-primary' },
-  { code: 'EXPERIMENTATION', icon: FlaskConical, labelKey: 'tryBeforeBuy' as TranslationKey, color: 'text-ya-accent' },
+  { code: 'TASK_EXECUTION', icon: Truck, labelKey: 'taskExecution' as TranslationKey },
+  { code: 'ASSISTED_PURCHASING', icon: ShoppingBag, labelKey: 'assistedPurchasing' as TranslationKey },
+  { code: 'MARKET_DISCOVERY', icon: Compass, labelKey: 'marketDiscovery' as TranslationKey },
+  { code: 'QUALITY_LAYER', icon: Star, labelKey: 'qualityReviews' as TranslationKey },
+  { code: 'ONSITE_SERVICES', icon: Wrench, labelKey: 'onsiteServices' as TranslationKey },
+  { code: 'SME_SUPPORT', icon: Briefcase, labelKey: 'smeSupport' as TranslationKey },
+  { code: 'EXPERIMENTATION', icon: FlaskConical, labelKey: 'tryBeforeBuy' as TranslationKey },
 ];
 
 export default function DomainTiles() {
   const { t } = useLang();
 
   return (
-    <section className="container py-10">
-      <h3 className="text-xl font-bold mb-6 text-center">{t('domains')}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {domains.map(({ code, icon: Icon, labelKey, color }, i) => (
+    <section className="container py-14">
+      <h3 className="text-lg font-bold mb-8 text-center text-muted-foreground tracking-widest uppercase font-en">
+        {t('domains')}
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-w-3xl mx-auto">
+        {domains.map(({ code, icon: Icon, labelKey }, i) => (
           <Link
             key={code}
             to={`/search?domain=${code}`}
             className={cn(
-              "group flex flex-col items-center gap-3 rounded-ya-md bg-card p-5",
-              "border border-border/50 transition-all duration-200",
-              "hover:border-ya-accent/50 hover:shadow-ya-sm hover:-translate-y-0.5",
-              "animate-scale-in"
+              "group relative flex flex-col items-center justify-center gap-3 p-6 rounded-2xl",
+              "bg-card border border-border/40",
+              "transition-all duration-300 ease-out",
+              "hover:bg-ya-primary hover:border-ya-primary hover:shadow-ya-md hover:-translate-y-1",
+              "animate-fade-in-up"
             )}
-            style={{ animationDelay: `${i * 0.05}s` }}
+            style={{ animationDelay: `${i * 0.06}s` }}
           >
-            {/* Icon - simple, no background */}
-            <Icon className={cn("h-7 w-7 transition-transform group-hover:scale-110", color)} />
-            
-            {/* Label */}
-            <span className="text-sm font-medium text-center leading-tight text-foreground">
+            <Icon
+              className="h-8 w-8 text-ya-accent transition-colors duration-300 group-hover:text-ya-highlight"
+              strokeWidth={1.8}
+            />
+            <span className="text-sm font-semibold text-center leading-tight text-foreground transition-colors duration-300 group-hover:text-white">
               {t(labelKey)}
             </span>
           </Link>

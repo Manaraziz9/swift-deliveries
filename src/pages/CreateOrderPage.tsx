@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import OrderWizard from '@/components/order/OrderWizard';
+import SmartOrderFlow from '@/components/order/SmartOrderFlow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLang } from '@/contexts/LangContext';
 import { Link } from 'react-router-dom';
@@ -54,5 +54,5 @@ export default function CreateOrderPage() {
     );
   }
 
-  return <OrderWizard merchantId={merchantId} branchId={branchId} />;
+  return <SmartOrderFlow merchantId={merchantId} branchId={branchId} />;
 }

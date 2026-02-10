@@ -11,7 +11,7 @@ export default function HeroSection() {
     setPressed(true);
     setTimeout(() => navigate('/create-order'), 600);
   };
-  return <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-[linear-gradient(180deg,hsl(222_38%_19%)_0%,hsl(222_32%_26%)_100%)] bg-[#d460e1]">
+  return <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-[linear-gradient(180deg,hsl(222_38%_19%)_0%,hsl(222_32%_26%)_100%)] bg-purple-400">
       {/* YA• — Hero of the scene */}
       <div className="flex items-center gap-1 animate-hero-ya">
         <span className="text-[5.5rem] sm:text-[7rem] lg:text-[9rem] font-bold text-white tracking-tight font-en leading-none">

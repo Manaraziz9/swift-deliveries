@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, MapPin, Phone, Clock, Star, BadgeCheck, ExternalLink, Image } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowRight, ArrowLeft, MapPin, Phone, Clock, Star, BadgeCheck, Image } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import QualityBadge from '@/components/shared/QualityBadge';
@@ -11,11 +10,13 @@ import { cn } from '@/lib/utils';
 export default function MerchantPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { lang, t } = useLang();
+  const { lang, dir } = useLang();
   const { data: merchant, isLoading } = useMerchant(id);
   const { data: branches } = useBranches(id);
   const { data: catalog } = useCatalogItems(id);
   const { data: quality } = useQualityScore(id);
+
+  const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
 
   if (isLoading) {
     return (
@@ -37,157 +38,112 @@ export default function MerchantPage() {
   const desc = lang === 'ar' && merchant.description_ar ? merchant.description_ar : merchant.description;
   const tags = Array.isArray(merchant.tags) ? merchant.tags : [];
   const isVerified = tags.includes('verified');
+  const mainBranch = branches?.[0];
 
   return (
     <div className="min-h-screen pb-24">
       <TopBar />
 
-      {/* Cover Image + Header */}
-      <div className="bg-gradient-navy relative overflow-hidden">
-        {merchant.cover_url && (
-          <div className="h-40 w-full">
-            <img 
-              src={merchant.cover_url} 
-              alt="" 
-              className="w-full h-full object-cover opacity-60"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-navy" />
-          </div>
-        )}
-        <div className="absolute -top-16 -end-16 h-48 w-48 rounded-full bg-gradient-gold opacity-10 blur-3xl" />
-        <div className={cn("container relative px-4 pb-6", merchant.cover_url ? "-mt-16" : "pt-8")}>
-          <Link to="/search" className="inline-flex items-center gap-1 text-secondary-foreground/60 text-xs mb-4 hover:text-secondary-foreground">
-            <ArrowRight className="h-3 w-3 rotate-180" />
-            {t('search')}
-          </Link>
-          <div className="flex items-start gap-3">
-            {merchant.logo_url && (
-              <img 
-                src={merchant.logo_url} 
-                alt="" 
-                className="w-16 h-16 rounded-xl object-cover border-2 border-background shadow-lg"
-              />
-            )}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-2xl font-bold text-secondary-foreground">{name}</h2>
-                {isVerified && <BadgeCheck className="h-5 w-5 text-emerald" />}
-              </div>
-              {desc && <p className="text-secondary-foreground/60 text-sm">{desc}</p>}
+      {/* Header */}
+      <div className="container pt-4 pb-2">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+          <BackArrow className="h-4 w-4" />
+          {lang === 'ar' ? 'رجوع' : 'Back'}
+        </button>
+
+        <div className="flex items-start gap-4">
+          {merchant.logo_url ? (
+            <img src={merchant.logo_url} alt="" className="w-20 h-20 rounded-2xl object-cover border-2 border-border" />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center">
+              <span className="text-2xl font-bold text-muted-foreground">{name[0]}</span>
             </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl font-bold truncate">{name}</h1>
+              {isVerified && <BadgeCheck className="h-5 w-5 text-emerald shrink-0" />}
+            </div>
+            {desc && <p className="text-sm text-muted-foreground line-clamp-2">{desc}</p>}
             {quality?.composite_score && (
-              <QualityBadge score={Number(quality.composite_score)} size="lg" />
+              <div className="mt-2">
+                <QualityBadge score={Number(quality.composite_score)} size="sm" />
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Quality breakdown */}
-      {quality && (
-        <div className="container py-4">
-          <div className="rounded-xl bg-card shadow-card p-4 animate-fade-in">
-            <h4 className="font-bold text-sm mb-3">{t('qualityScore')}</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-xl font-bold text-primary mb-1">
-                  <Star className="h-5 w-5 fill-rating-star text-rating-star" />
-                  {Number(quality.internal_avg).toFixed(1)}
-                </div>
-                <p className="text-[10px] text-muted-foreground">{t('internalRating')}</p>
-                <p className="text-[10px] text-muted-foreground">{quality.internal_count} {t('reviews')}</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-xl font-bold text-foreground mb-1">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  {quality.external_rating ? Number(quality.external_rating).toFixed(1) : '—'}
-                </div>
-                <p className="text-[10px] text-muted-foreground">{t('externalRating')}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {quality.external_review_count || 0} {t('reviews')} • {quality.external_source || ''}
-                </p>
-              </div>
+      {/* Location & Hours */}
+      {mainBranch && (
+        <div className="container py-3">
+          <div className="rounded-2xl bg-card border p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span>{lang === 'ar' ? mainBranch.address_text_ar || mainBranch.address_text : mainBranch.address_text}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={cn(
+                "inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1",
+                mainBranch.open_now ? "bg-emerald/10 text-emerald" : "bg-destructive/10 text-destructive"
+              )}>
+                <Clock className="h-3 w-3" />
+                {mainBranch.open_now
+                  ? (lang === 'ar' ? 'مفتوح الآن' : 'Open Now')
+                  : (lang === 'ar' ? 'مغلق' : 'Closed')}
+              </span>
+              {mainBranch.phone && (
+                <a href={`tel:${mainBranch.phone}`} className="inline-flex items-center gap-1 text-xs text-primary">
+                  <Phone className="h-3 w-3" />
+                  {mainBranch.phone}
+                </a>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Branches */}
-      {branches && branches.length > 0 && (
+      {/* Ratings */}
+      {quality && (
         <div className="container py-2">
-          <h4 className="font-bold text-sm mb-3">{lang === 'ar' ? 'الفروع' : 'Branches'}</h4>
-          <div className="space-y-2">
-            {branches.map(branch => (
-              <div key={branch.id} className="rounded-xl bg-card shadow-card p-3 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {branch.branch_name || (lang === 'ar' ? branch.address_text_ar : branch.address_text)}
-                    </p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <MapPin className="h-3 w-3" />
-                      {lang === 'ar' ? branch.address_text_ar || branch.address_text : branch.address_text}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "flex items-center gap-1 text-xs rounded-full px-2 py-0.5",
-                      branch.open_now ? "bg-emerald/10 text-emerald" : "bg-destructive/10 text-destructive"
-                    )}>
-                      <Clock className="h-3 w-3" />
-                      {branch.open_now ? t('openNow') : t('closed')}
-                    </span>
-                    {branch.phone && (
-                      <a href={`tel:${branch.phone}`} className="text-primary">
-                        <Phone className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
+          <div className="rounded-2xl bg-card border p-4">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 text-xl font-bold">
+                  <Star className="h-5 w-5 fill-rating-star text-rating-star" />
+                  {Number(quality.internal_avg).toFixed(1)}
                 </div>
+                <p className="text-[10px] text-muted-foreground">{quality.internal_count} {lang === 'ar' ? 'تقييم' : 'reviews'}</p>
               </div>
-            ))}
+              {quality.external_rating && (
+                <div className="text-center border-s ps-4">
+                  <div className="text-xl font-bold">{Number(quality.external_rating).toFixed(1)}</div>
+                  <p className="text-[10px] text-muted-foreground">{quality.external_source}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Catalog */}
+      {/* Photos / Catalog preview */}
       {catalog && catalog.length > 0 && (
-        <div className="container py-4">
-          <h4 className="font-bold text-sm mb-3">{t('products')}</h4>
-          <div className="space-y-2">
-            {catalog.map((item, i) => {
-              const itemName = lang === 'ar' && item.name_ar ? item.name_ar : item.name;
-              const itemDesc = lang === 'ar' && item.description_ar ? item.description_ar : item.description;
+        <div className="container py-3">
+          <h4 className="font-bold text-sm mb-3">{lang === 'ar' ? 'المنتجات' : 'Products'}</h4>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {catalog.slice(0, 6).map(item => {
               const photos = item.photos as string[] | null;
+              const itemName = lang === 'ar' && item.name_ar ? item.name_ar : item.name;
               return (
-                <div key={item.id} className="rounded-xl bg-card shadow-card p-4 animate-fade-in" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="flex items-start gap-3">
-                    {photos && photos.length > 0 ? (
-                      <img 
-                        src={photos[0]} 
-                        alt={itemName} 
-                        className="w-16 h-16 rounded-lg object-cover shrink-0"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Image className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h5 className="font-semibold text-sm">{itemName}</h5>
-                      {itemDesc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{itemDesc}</p>}
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="font-bold text-sm text-primary">
-                          {item.price_type === 'fixed'
-                            ? `${item.price_fixed} ${t('sar')}`
-                            : `${item.price_min}–${item.price_max} ${t('sar')}`
-                          }
-                        </div>
-                        <button className="text-[10px] font-medium text-primary underline underline-offset-2">
-                          {t('addToOrder')}
-                        </button>
-                      </div>
+                <div key={item.id} className="shrink-0 w-28">
+                  {photos && photos.length > 0 ? (
+                    <img src={photos[0]} alt={itemName} className="w-28 h-28 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-28 h-28 rounded-xl bg-muted flex items-center justify-center">
+                      <Image className="h-6 w-6 text-muted-foreground" />
                     </div>
-                  </div>
+                  )}
+                  <p className="text-xs font-medium mt-1 truncate">{itemName}</p>
                 </div>
               );
             })}
@@ -198,11 +154,11 @@ export default function MerchantPage() {
       {/* CTA */}
       <div className="fixed bottom-16 inset-x-0 p-4 bg-gradient-to-t from-background via-background to-transparent">
         <div className="container">
-          <button 
+          <button
             onClick={() => navigate(`/create-order?merchant=${id}&branch=${branches?.[0]?.id || ''}`)}
-            className="w-full bg-gradient-gold text-primary-foreground py-3.5 rounded-xl font-bold shadow-gold hover:opacity-90 transition-opacity"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold shadow-ya-accent hover:brightness-95 transition-all"
           >
-            {t('createOrder')}
+            {lang === 'ar' ? 'اطلب' : 'Order'}
           </button>
         </div>
       </div>

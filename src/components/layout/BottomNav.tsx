@@ -25,17 +25,16 @@ export default function BottomNav() {
               to={path}
               className={cn(
                 "relative flex flex-col items-center gap-1 px-5 py-2 transition-all duration-200",
-                active ? "text-ya-accent" : "text-muted-foreground hover:text-foreground"
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {/* Active indicator */}
               {active && (
-                <span className="absolute -top-0.5 inset-x-4 h-0.5 bg-ya-accent-gradient rounded-full" />
+                <span className="absolute -top-0.5 inset-x-4 h-0.5 bg-primary rounded-full" />
               )}
               
               <div className={cn(
-                "relative p-1.5 rounded-ya-sm transition-all duration-200",
-                active && "bg-ya-accent/10"
+                "relative p-1.5 rounded-lg transition-all duration-200",
+                active && "bg-primary/10"
               )}>
                 <Icon className={cn(
                   "h-5 w-5 transition-transform duration-200",

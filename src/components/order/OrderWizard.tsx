@@ -449,12 +449,12 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
             </button>
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold font-en">YA</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-ya-accent" />
+              <span className="w-1.5 h-1.5 rounded-full bg-ya-highlight" />
             </div>
             {/* Save Draft Button */}
             <button
               onClick={handleSaveDraft}
-              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-ya-accent transition-colors"
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
               title={lang === 'ar' ? 'حفظ كمسودة' : 'Save as draft'}
             >
               <Save className="h-4 w-4" />
@@ -469,7 +469,7 @@ export default function OrderWizard({ merchantId, branchId }: OrderWizardProps) 
                   className={cn(
                     "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
                     step === s.id
-                      ? "bg-ya-accent text-white"
+                       ? "bg-ya-accent text-white"
                       : step > s.id
                       ? "bg-success text-white"
                       : "bg-muted text-muted-foreground"

@@ -71,8 +71,7 @@ export default function ProfilePage() {
       <TopBar />
 
       {/* Profile Header */}
-      <div className="bg-gradient-navy px-4 py-8 relative overflow-hidden">
-        <div className="absolute -top-16 -end-16 h-48 w-48 rounded-full bg-gradient-gold opacity-10 blur-3xl" />
+      <div className="bg-foreground px-4 py-8 relative overflow-hidden">
         <div className="container relative flex items-center gap-4">
           <div className="h-20 w-20 rounded-full bg-card flex items-center justify-center shadow-lg">
             {profile?.avatar_url ? (
@@ -82,17 +81,17 @@ export default function ProfilePage() {
             )}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-secondary-foreground">
+            <h2 className="text-xl font-bold text-background">
               {profile?.name || user.email?.split('@')[0]}
             </h2>
-            <p className="text-secondary-foreground/60 text-sm">{user.email}</p>
+            <p className="text-background/50 text-sm">{user.email}</p>
           </div>
         </div>
       </div>
 
       {/* Info Cards */}
       <div className="container py-6 space-y-3">
-        <div className="rounded-xl bg-card shadow-card p-4 flex items-center gap-3">
+        <div className="rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
             <Mail className="h-5 w-5 text-primary" />
           </div>
@@ -103,9 +102,9 @@ export default function ProfilePage() {
         </div>
 
         {profile?.phone && (
-          <div className="rounded-xl bg-card shadow-card p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-emerald/10 flex items-center justify-center">
-              <Phone className="h-5 w-5 text-emerald" />
+          <div className="rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
+              <Phone className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الهاتف' : 'Phone'}</p>
@@ -114,7 +113,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <button className="w-full rounded-xl bg-card shadow-card p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
+        <button className="w-full rounded-xl bg-card shadow-ya-sm p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors">
           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
             <Settings className="h-5 w-5 text-muted-foreground" />
           </div>

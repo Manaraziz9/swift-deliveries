@@ -18,10 +18,9 @@ export default function StatsSection() {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
       const windowH = window.innerHeight;
-      // Only animate when section is near viewport
       if (rect.top < windowH && rect.bottom > 0) {
         const progress = (windowH - rect.top) / (windowH + rect.height);
-        setOffset(Math.min(progress * 30, 30)); // max 30px parallax
+        setOffset(Math.min(progress * 30, 30));
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -34,7 +33,6 @@ export default function StatsSection() {
       className="relative py-16 overflow-hidden"
       style={{ transform: `translateY(-${offset}px)` }}
     >
-      {/* Subtle divider gradient */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
       <div className="container">
@@ -45,7 +43,7 @@ export default function StatsSection() {
               className="flex flex-col items-center gap-2 text-center animate-fade-in"
               style={{ animationDelay: `${i * 0.12}s` }}
             >
-              <Icon className="h-5 w-5 text-ya-accent mb-1" strokeWidth={1.8} />
+              <Icon className="h-5 w-5 text-primary mb-1" strokeWidth={1.8} />
               <span className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight font-en">
                 {value}
               </span>

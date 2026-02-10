@@ -15,11 +15,8 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
   }, [onComplete]);
 
   useEffect(() => {
-    // Dots animation phase
     const settleTimer = setTimeout(() => setPhase('settle'), 1800);
-    // Exit phase
     const exitTimer = setTimeout(() => setPhase('exit'), duration - 300);
-    // Complete
     const completeTimer = setTimeout(onComplete, duration);
 
     return () => {
@@ -32,7 +29,7 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
   return (
     <div 
       className={cn(
-        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-ya-primary transition-opacity duration-300 cursor-pointer select-none",
+        "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-foreground transition-opacity duration-300 cursor-pointer select-none",
         phase === 'exit' && "opacity-0 pointer-events-none"
       )}
       onClick={handleSkip}
@@ -43,7 +40,7 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
     >
       {/* Logo: YA• */}
       <div className="flex items-center gap-1 animate-fade-in">
-        <span className="text-5xl sm:text-6xl font-bold text-white tracking-tight font-en">
+        <span className="text-5xl sm:text-6xl font-bold text-background tracking-tight font-en">
           YA
         </span>
         <span 
@@ -54,14 +51,14 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
         />
       </div>
 
-      {/* Animated dots: Call → Act → Done */}
+      {/* Animated dots */}
       <div className="flex items-center gap-2 mt-8 h-4">
         {phase === 'dots' && (
           <>
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className="w-2 h-2 rounded-full bg-ya-accent animate-splash-dot-appear"
+                className="w-2 h-2 rounded-full bg-primary animate-splash-dot-appear"
                 style={{ animationDelay: `${i * 200}ms` }}
               />
             ))}
@@ -76,7 +73,7 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
       {/* Tagline */}
       <p 
         className={cn(
-          "text-white/70 text-sm sm:text-base mt-8 font-light tracking-wide opacity-0",
+          "text-background/60 text-sm sm:text-base mt-8 font-light tracking-wide opacity-0",
           phase !== 'dots' && "animate-fade-in"
         )}
         style={{ animationDelay: '0.2s' }}
@@ -85,7 +82,7 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
       </p>
 
       {/* Skip hint */}
-      <p className="absolute bottom-8 text-white/40 text-xs animate-fade-in" style={{ animationDelay: '1s' }}>
+      <p className="absolute bottom-8 text-background/30 text-xs animate-fade-in" style={{ animationDelay: '1s' }}>
         Tap to skip
       </p>
     </div>

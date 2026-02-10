@@ -22,7 +22,7 @@ export default function QualityBadge({ score, size = 'md', className }: QualityB
 
   return (
     <span className={cn(
-      "inline-flex items-center rounded-xl font-bold bg-gradient-gold-static text-primary-foreground shadow-gold",
+      "inline-flex items-center rounded-xl font-bold bg-ya-highlight text-foreground shadow-ya-highlight",
       sizes[size],
       className
     )}>

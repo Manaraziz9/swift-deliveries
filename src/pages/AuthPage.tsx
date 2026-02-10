@@ -48,14 +48,10 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-navy flex flex-col">
-      {/* Decorative */}
-      <div className="absolute -top-24 -end-24 h-72 w-72 rounded-full bg-gradient-gold opacity-10 blur-3xl" />
-      <div className="absolute bottom-0 -start-24 h-56 w-56 rounded-full bg-gradient-gold opacity-5 blur-2xl" />
-
+    <div className="min-h-screen bg-foreground flex flex-col relative overflow-hidden">
       {/* Header */}
       <div className="p-4 relative z-10">
-        <Link to="/" className="inline-flex items-center gap-1 text-secondary-foreground/60 text-sm hover:text-secondary-foreground">
+        <Link to="/" className="inline-flex items-center gap-1 text-background/50 text-sm hover:text-background/80">
           <BackArrow className="h-4 w-4" />
           {t('home')}
         </Link>
@@ -64,10 +60,10 @@ export default function AuthPage() {
       {/* Content */}
       <div className="flex-1 flex flex-col justify-center px-6 relative z-10">
         <div className="max-w-sm mx-auto w-full">
-          <h1 className="text-3xl font-bold text-secondary-foreground mb-2 text-center">
+          <h1 className="text-3xl font-bold text-background mb-2 text-center">
             {t('appName')}
           </h1>
-          <p className="text-secondary-foreground/60 text-center mb-8">
+          <p className="text-background/50 text-center mb-8">
             {mode === 'login'
               ? (lang === 'ar' ? 'سجّل دخولك للمتابعة' : 'Sign in to continue')
               : (lang === 'ar' ? 'أنشئ حساباً جديداً' : 'Create a new account')
@@ -77,45 +73,45 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div className="relative">
-                <User className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <User className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-background/40" />
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder={lang === 'ar' ? 'الاسم' : 'Name'}
-                  className="w-full rounded-xl bg-card/10 border border-secondary-foreground/20 ps-11 pe-4 py-3.5 text-secondary-foreground placeholder:text-secondary-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full rounded-xl bg-background/10 border border-background/20 ps-11 pe-4 py-3.5 text-background placeholder:text-background/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   required
                 />
               </div>
             )}
 
             <div className="relative">
-              <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Mail className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-background/40" />
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder={lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}
-                className="w-full rounded-xl bg-card/10 border border-secondary-foreground/20 ps-11 pe-4 py-3.5 text-secondary-foreground placeholder:text-secondary-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full rounded-xl bg-background/10 border border-background/20 ps-11 pe-4 py-3.5 text-background placeholder:text-background/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
               />
             </div>
 
             <div className="relative">
-              <Lock className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Lock className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-background/40" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder={lang === 'ar' ? 'كلمة المرور' : 'Password'}
-                className="w-full rounded-xl bg-card/10 border border-secondary-foreground/20 ps-11 pe-11 py-3.5 text-secondary-foreground placeholder:text-secondary-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full rounded-xl bg-background/10 border border-background/20 ps-11 pe-11 py-3.5 text-background placeholder:text-background/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
                 minLength={6}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute end-3 top-1/2 -translate-y-1/2 text-secondary-foreground/40 hover:text-secondary-foreground/60"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-background/40 hover:text-background/60"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -124,7 +120,7 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-gold text-primary-foreground py-3.5 rounded-xl font-bold shadow-gold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-bold shadow-ya-accent hover:brightness-95 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -143,7 +139,7 @@ export default function AuthPage() {
           <div className="mt-6 text-center">
             <button
               onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-              className="text-secondary-foreground/60 text-sm hover:text-secondary-foreground"
+              className="text-background/50 text-sm hover:text-background/80"
             >
               {mode === 'login'
                 ? (lang === 'ar' ? 'ما عندك حساب؟ سجّل الآن' : "Don't have an account? Sign up")

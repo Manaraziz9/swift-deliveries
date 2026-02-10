@@ -13,7 +13,6 @@ export default function TopRatedSection() {
   const { data: qualities } = useQualityScores(merchantIds);
   const Arrow = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
-  // Get first branch for each merchant
   const { data: branches } = useQuery({
     queryKey: ['all-branches'],
     queryFn: async () => {
@@ -31,11 +30,10 @@ export default function TopRatedSection() {
 
   return (
     <section className="container py-8">
-      {/* Section header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rating-star/15 flex items-center justify-center">
-            <Award className="h-5 w-5 text-rating-star" />
+          <div className="w-10 h-10 rounded-xl bg-ya-highlight/15 flex items-center justify-center">
+            <Award className="h-5 w-5 text-ya-highlight" />
           </div>
           <div>
             <h3 className="text-xl font-bold">{t('topRated')}</h3>
@@ -53,11 +51,10 @@ export default function TopRatedSection() {
         </Link>
       </div>
 
-      {/* Loading state */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card-premium p-5 animate-pulse">
+            <div key={i} className="card-ya p-5 animate-pulse">
               <div className="flex gap-4">
                 <div className="w-14 h-14 rounded-xl skeleton" />
                 <div className="flex-1 space-y-2">
@@ -82,7 +79,6 @@ export default function TopRatedSection() {
         </div>
       )}
 
-      {/* Empty state */}
       {!isLoading && sorted.length === 0 && (
         <div className="text-center py-12 rounded-2xl bg-muted/50">
           <Award className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />

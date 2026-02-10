@@ -47,7 +47,7 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
   return (
     <Link
       to={`/merchant/${merchant.id}`}
-      className="card-premium group block animate-fade-in"
+      className="card-ya group block animate-fade-in"
       style={{ animationDelay: `${index * 0.08}s` }}
     >
       <div className="p-5">
@@ -62,12 +62,12 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
                   className="w-14 h-14 rounded-xl object-cover ring-2 ring-border group-hover:ring-primary/30 transition-all duration-300"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-xl bg-gradient-gold-static flex items-center justify-center text-primary-foreground font-bold text-lg">
+                <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
                   {name.charAt(0)}
                 </div>
               )}
               {isVerified && (
-                <div className="absolute -bottom-1 -end-1 bg-emerald rounded-full p-0.5">
+                <div className="absolute -bottom-1 -end-1 bg-success rounded-full p-0.5">
                   <BadgeCheck className="h-4 w-4 text-white" />
                 </div>
               )}
@@ -87,7 +87,6 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
             </div>
           </div>
           
-          {/* Quality badge */}
           {quality?.composite_score ? (
             <QualityBadge score={quality.composite_score} size="sm" />
           ) : null}
@@ -99,11 +98,11 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
             {branch && (
               <span className={cn(
                 "flex items-center gap-1.5 font-medium",
-                branch.open_now ? "text-emerald" : "text-destructive"
+                branch.open_now ? "text-success" : "text-destructive"
               )}>
                 <span className={cn(
                   "w-2 h-2 rounded-full",
-                  branch.open_now ? "bg-emerald animate-pulse" : "bg-destructive"
+                  branch.open_now ? "bg-success animate-pulse" : "bg-destructive"
                 )} />
                 {branch.open_now ? t('openNow') : t('closed')}
               </span>
@@ -116,7 +115,7 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
             )}
             {quality?.internal_avg && quality.internal_avg > 0 ? (
               <span className="flex items-center gap-1 text-muted-foreground">
-                <Star className="h-3.5 w-3.5 text-rating-star fill-rating-star" />
+                <Star className="h-3.5 w-3.5 text-ya-highlight fill-ya-highlight" />
                 <span className="font-medium text-foreground">{Number(quality.internal_avg).toFixed(1)}</span>
                 {quality.internal_count ? (
                   <span>({quality.internal_count})</span>
@@ -127,7 +126,6 @@ export default function MerchantCard({ merchant, branch, quality, index = 0, dis
             ) : null}
           </div>
           
-          {/* Arrow indicator */}
           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
             <ArrowUpRight className="h-4 w-4" />
           </div>

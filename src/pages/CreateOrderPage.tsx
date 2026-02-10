@@ -37,7 +37,7 @@ export default function CreateOrderPage() {
           </p>
           <Link
             to="/auth"
-            className="inline-flex items-center gap-2 bg-gradient-gold text-primary-foreground px-6 py-3 rounded-xl font-bold shadow-gold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold shadow-ya-accent hover:brightness-95 transition-all"
           >
             <LogIn className="h-5 w-5" />
             {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}

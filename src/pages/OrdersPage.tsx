@@ -44,8 +44,8 @@ export default function OrdersPage() {
     draft: { ar: 'مسودة', en: 'Draft', icon: Clock, color: 'text-muted-foreground' },
     payment_pending: { ar: 'بانتظار الدفع', en: 'Payment Pending', icon: Clock, color: 'text-primary' },
     paid: { ar: 'مدفوع', en: 'Paid', icon: Clock, color: 'text-primary' },
-    in_progress: { ar: 'قيد التنفيذ', en: 'In Progress', icon: Clock, color: 'text-emerald' },
-    completed: { ar: 'مكتمل', en: 'Completed', icon: CheckCircle, color: 'text-emerald' },
+    in_progress: { ar: 'قيد التنفيذ', en: 'In Progress', icon: Clock, color: 'text-success' },
+    completed: { ar: 'مكتمل', en: 'Completed', icon: CheckCircle, color: 'text-success' },
     canceled: { ar: 'ملغي', en: 'Canceled', icon: XCircle, color: 'text-destructive' },
   };
 
@@ -73,7 +73,7 @@ export default function OrdersPage() {
           </p>
           <Link
             to="/auth"
-            className="inline-flex items-center gap-2 bg-gradient-gold text-primary-foreground px-6 py-3 rounded-lg font-semibold shadow-gold"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-semibold shadow-ya-accent"
           >
             {t('loginSignup')}
           </Link>
@@ -94,13 +94,13 @@ export default function OrdersPage() {
           <div className="text-center py-12">
             <ListOrdered className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
-              {lang === 'ar' ? 'لا توجد طلبات بعد' : 'No orders yet'}
+              {lang === 'ar' ? 'ما عندك طلبات حالياً' : 'No orders yet'}
             </p>
             <Link
               to="/search"
-              className="inline-flex items-center gap-2 bg-gradient-gold text-primary-foreground px-6 py-3 rounded-lg font-semibold shadow-gold mt-4"
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-semibold shadow-ya-accent mt-4"
             >
-              {t('createOrder')}
+              {lang === 'ar' ? 'اطلب الآن' : 'Order Now'}
             </Link>
           </div>
         ) : (
@@ -109,7 +109,7 @@ export default function OrdersPage() {
               const status = statusLabels[order.status] || statusLabels.draft;
               const StatusIcon = status.icon;
               return (
-                <Link to={`/orders/${order.id}`} key={order.id} className="block rounded-xl bg-card shadow-card p-4 animate-fade-in hover:shadow-lg transition-shadow">
+                <Link to={`/orders/${order.id}`} key={order.id} className="block rounded-xl bg-card shadow-ya-sm p-4 animate-fade-in hover:shadow-ya-md transition-shadow">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold text-sm">

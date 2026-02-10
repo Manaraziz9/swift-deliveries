@@ -88,12 +88,12 @@ function IntentTooltip({
       onClick={onClose}
     >
       <div className={cn(
-        "mx-auto max-w-[90%] p-3 rounded-ya-md",
+        "mx-auto max-w-[90%] p-3 rounded-xl",
         "bg-popover/95 backdrop-blur-lg border border-border shadow-ya-md",
         "text-sm text-center"
       )}>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <Info className="h-4 w-4 text-ya-accent" />
+          <Info className="h-4 w-4 text-primary" />
           <span className="font-semibold">
             {lang === 'ar' ? metadata.titleAr : metadata.titleEn}
           </span>
@@ -168,7 +168,7 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
             </button>
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold">YA</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-ya-accent" />
+              <span className="w-1.5 h-1.5 rounded-full bg-ya-highlight" />
             </div>
             <div className="w-16" />
           </div>
@@ -185,9 +185,9 @@ export default function IntentSelection({ onSelect, onDiscover, onRate, onRestor
 
         {/* Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-ya-accent/10 rounded-full px-4 py-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-ya-accent animate-pulse-soft" />
-            <span className="text-sm font-medium text-ya-accent">
+          <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse-soft" />
+            <span className="text-sm font-medium text-primary">
               {lang === 'ar' ? 'قل YA' : 'Say YA'}
             </span>
           </div>
@@ -277,7 +277,7 @@ function IntentCard({
         onClick={handleClick}
         {...longPressHandlers}
         className={cn(
-          "w-full group relative flex flex-col items-center gap-4 rounded-ya-lg bg-card p-6 overflow-hidden",
+          "w-full group relative flex flex-col items-center gap-4 rounded-2xl bg-card p-6 overflow-hidden",
           "shadow-ya-sm transition-all duration-200",
           "hover:shadow-ya-md hover:-translate-y-1",
           "animate-scale-in text-center select-none",
@@ -301,7 +301,7 @@ function IntentCard({
 
         {/* Icon container */}
         <div className={cn(
-          "relative z-10 rounded-ya-md p-5 transition-all duration-200",
+          "relative z-10 rounded-xl p-5 transition-all duration-200",
           cardStyle.iconBg,
           "group-hover:scale-110"
         )}>

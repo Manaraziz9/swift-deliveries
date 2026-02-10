@@ -390,7 +390,7 @@ export default function StepChainTasks({ formData, updateFormData }: StepChainTa
     <div className="space-y-4 pb-20">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold">
-          {lang === 'ar' ? 'مهام السلسلة' : 'Chain Tasks'}
+          {lang === 'ar' ? 'خلّنا نرتّبها لك' : 'Let us coordinate for you'}
         </h3>
         <span className="text-sm text-muted-foreground">
           {formData.chainTasks.length} {lang === 'ar' ? 'مهام' : 'tasks'}

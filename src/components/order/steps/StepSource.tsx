@@ -71,7 +71,7 @@ export default function StepSource({ formData, updateFormData }: StepSourceProps
           )}
         >
           <Store className="h-4 w-4 mx-auto mb-1" />
-          {lang === 'ar' ? 'من محل' : 'From Store'}
+          {lang === 'ar' ? 'اختر محل' : 'Choose Store'}
         </button>
         <button
           onClick={() => setSourceType('custom')}
@@ -83,7 +83,7 @@ export default function StepSource({ formData, updateFormData }: StepSourceProps
           )}
         >
           <MapPin className="h-4 w-4 mx-auto mb-1" />
-          {lang === 'ar' ? 'موقع مخصص' : 'Custom Location'}
+          {lang === 'ar' ? 'أو خلّنا نقترح' : 'Or let us suggest'}
         </button>
       </div>
 

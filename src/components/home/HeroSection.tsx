@@ -28,7 +28,7 @@ export default function HeroSection() {
           When you call, we act.
         </p>
         <p className="text-white/70 text-base sm:text-lg font-ar">
-          قل يا… والباقي علينا
+          قل يا… وخلّها علينا
         </p>
       </div>
 

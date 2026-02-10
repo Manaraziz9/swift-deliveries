@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
-
 export default function HeroSection() {
-  const { dir } = useLang();
+  const {
+    dir
+  } = useLang();
   const navigate = useNavigate();
   const [pressed, setPressed] = useState(false);
-
   const handleCTA = () => {
     setPressed(true);
     setTimeout(() => navigate('/create-order'), 600);
   };
-
-  return (
-    <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-[linear-gradient(180deg,hsl(222_38%_19%)_0%,hsl(222_32%_26%)_100%)]">
+  return <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-[linear-gradient(180deg,hsl(222_38%_19%)_0%,hsl(222_32%_26%)_100%)] bg-[#d460e1]">
       {/* YA• — Hero of the scene */}
       <div className="flex items-center gap-1 animate-hero-ya">
         <span className="text-[5.5rem] sm:text-[7rem] lg:text-[9rem] font-bold text-white tracking-tight font-en leading-none">
@@ -33,15 +31,8 @@ export default function HeroSection() {
       </div>
 
       {/* Single CTA — Pill shape */}
-      <button
-        onClick={handleCTA}
-        disabled={pressed}
-        className="mt-10 sm:mt-12 bg-ya-accent text-white text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-[0.94] hover:shadow-ya-md active:scale-[0.98]"
-      >
-        {pressed
-          ? (dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…')
-          : (dir === 'rtl' ? 'قل YA' : 'Say YA')}
+      <button onClick={handleCTA} disabled={pressed} className="mt-10 sm:mt-12 bg-ya-accent text-white text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 animate-hero-cta hover:brightness-[0.94] hover:shadow-ya-md active:scale-[0.98]">
+        {pressed ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…' : dir === 'rtl' ? 'قل YA' : 'Say YA'}
       </button>
-    </section>
-  );
+    </section>;
 }

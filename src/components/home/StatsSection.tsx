@@ -45,7 +45,7 @@ export default function StatsSection() {
               className="flex flex-col items-center gap-2 text-center animate-fade-in"
               style={{ animationDelay: `${i * 0.12}s` }}
             >
-              <Icon className="h-5 w-5 text-ya-accent mb-1" strokeWidth={1.8} />
+              <Icon className="h-5 w-5 text-ya-primary mb-1" strokeWidth={1.8} />
               <span className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight font-en">
                 {value}
               </span>

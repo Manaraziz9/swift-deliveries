@@ -61,15 +61,15 @@ export default {
   		},
   		colors: {
   			ya: {
-  				primary: 'hsl(222 38% 19%)',
-  				accent: 'hsl(171 78% 40%)',
-  				highlight: 'hsl(45 88% 63%)',
-  				bg: 'hsl(210 40% 98%)',
-  				text: 'hsl(222 47% 11%)',
-  				text2: 'hsl(215 16% 47%)',
-  				border: 'hsl(214 32% 91%)',
-  				success: 'hsl(142 71% 45%)',
-  				error: 'hsl(0 72% 51%)'
+  				primary: 'hsl(25 95% 53%)',
+  				accent: 'hsl(20 91% 48%)',
+  				highlight: 'hsl(48 96% 53%)',
+  				bg: 'hsl(33 100% 96%)',
+  				text: 'hsl(221 39% 11%)',
+  				text2: 'hsl(220 9% 46%)',
+  				border: 'hsl(30 20% 88%)',
+  				success: 'hsl(142 76% 36%)',
+  				error: 'hsl(0 84% 50%)'
   			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',

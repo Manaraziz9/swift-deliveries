@@ -165,18 +165,24 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-ar);
+    line-height: 1.7;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   [lang="en"] body,
   [dir="ltr"] body {
     font-family: var(--font-en);
+    line-height: 1.5;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-en);
-    @apply tracking-tight font-semibold;
+    @apply font-semibold;
+    letter-spacing: -0.02em;
   }
   [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
     font-family: var(--font-ar);
+    letter-spacing: 0;
+    font-weight: 500;
+    line-height: 1.6;
   }
 }
 

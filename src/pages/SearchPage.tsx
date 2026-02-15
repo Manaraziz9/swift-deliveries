@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, Map, List, Navigation, Loader2, X, ArrowLeft, ArrowRight, Clock, Star, MapPin } from 'lucide-react';
+import { Search, Map, List, Navigation, Loader2, X, ArrowLeft, ArrowRight, Clock, Star, MapPin, Mic } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import MerchantsMap from '@/components/map/MerchantsMap';
@@ -14,6 +14,8 @@ import SearchResultCard from '@/components/search/SearchResultCard';
 import SearchChips from '@/components/search/SearchChips';
 import SearchTabs from '@/components/search/SearchTabs';
 import SearchFilters from '@/components/search/SearchFilters';
+import VoiceInputButton from '@/components/shared/VoiceInputButton';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 export default function SearchPage() {
   const { t, lang, dir } = useLang();
@@ -27,6 +29,7 @@ export default function SearchPage() {
 
   const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
   const { latitude, longitude, loading: geoLoading, requestLocation, hasLocation } = useGeolocation();
+  const voice = useVoiceInput({ lang, onResult: (text) => setQuery(text) });
 
   const { data: merchants, isLoading } = useMerchants(domainFilter);
   const merchantIds = (merchants || []).map(m => m.id);
@@ -132,14 +135,14 @@ export default function SearchPage() {
                 className="w-full rounded-full border bg-card ps-10 pe-10 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 autoFocus
               />
-              {query && (
-                <button
-                  onClick={() => setQuery('')}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+              <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                {query && (
+                  <button onClick={() => setQuery('')} className="p-1 text-muted-foreground hover:text-foreground">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                <VoiceInputButton isListening={voice.isListening} isSupported={voice.isSupported} onToggle={voice.toggle} />
+              </div>
             </div>
             {/* View Toggle */}
             <div className="flex rounded-full border bg-card overflow-hidden">

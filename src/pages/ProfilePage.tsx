@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import MyLocationsSection from '@/components/location/MyLocationsSection';
+import ReferralSection from '@/components/referral/ReferralSection';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,6 +117,9 @@ export default function ProfilePage() {
 
         {/* My Locations */}
         <MyLocationsSection />
+
+        {/* Referral */}
+        <ReferralSection />
 
         {/* Actions */}
         <div className="space-y-3">

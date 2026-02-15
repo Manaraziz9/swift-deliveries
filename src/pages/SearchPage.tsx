@@ -17,6 +17,7 @@ import SearchChips from '@/components/search/SearchChips';
 import SearchTabs from '@/components/search/SearchTabs';
 import SearchFilters from '@/components/search/SearchFilters';
 import VoiceInputButton from '@/components/shared/VoiceInputButton';
+import ManualMerchantEntry from '@/components/search/ManualMerchantEntry';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 export default function SearchPage() {
@@ -244,6 +245,9 @@ export default function SearchPage() {
             </div>
           </div>
         )}
+
+        {/* Manual merchant entry */}
+        <ManualMerchantEntry />
       </div>
 
       <BottomNav />

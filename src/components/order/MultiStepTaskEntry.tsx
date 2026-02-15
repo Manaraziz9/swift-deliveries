@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import VoiceInputButton from '@/components/shared/VoiceInputButton';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type StepRelation } from './StepTypeChooser';
+
+export type StepRelation = 'independent' | 'linked';
 
 export interface OrderStepData {
   id: string;

@@ -14,14 +14,13 @@ import { useUserLocations } from '@/hooks/useUserLocations';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { toast } from 'sonner';
-import PaymentModal from '@/components/payment/PaymentModal';
-import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
 import VoiceInputButton from '@/components/shared/VoiceInputButton';
 import PrayerTimeNotice from '@/components/order/PrayerTimeNotice';
-import StepTypeChooser, { type StepRelation } from './StepTypeChooser';
-import MultiStepTaskEntry, { type OrderStepData } from './MultiStepTaskEntry';
-import OrderStepsSummary from './OrderStepsSummary';
-import { AnimatePresence } from 'framer-motion';
+import StepConfirmationView from './StepConfirmationView';
+import FinalCheckoutView from './FinalCheckoutView';
+import PickupOptionsView from './PickupOptionsView';
+import { useOrderSession, type CompletedOrderStep } from '@/hooks/useOrderSession';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface SmartOrderFlowProps {
   merchantId?: string;
@@ -36,14 +35,17 @@ interface CartItem {
   price?: number;
   quantity: number;
   unit?: string;
+  specification?: string;
+  notes?: string;
 }
 
-// OrderStepData is now imported from MultiStepTaskEntry
+type Phase = 'shopping' | 'step_confirmed' | 'checkout' | 'pickup_options';
 
 export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowProps) {
   const { lang, dir } = useLang();
   const navigate = useNavigate();
   const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
+  const session = useOrderSession();
 
   // Data hooks
   const { data: merchant } = useMerchant(merchantId);
@@ -54,25 +56,25 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
   const createOrder = useCreateOrder();
   const catalogVoice = useVoiceInput({ lang, onResult: (text) => setCatalogSearch(text) });
   const customVoice = useVoiceInput({ lang, onResult: (text) => setCustomText(prev => prev + ' ' + text) });
-  // State
+
+  // Phase state
+  const [phase, setPhase] = useState<Phase>('shopping');
+  const [completedSteps, setCompletedSteps] = useState<CompletedOrderStep[]>(() => session.getSteps());
+
+  // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customText, setCustomText] = useState('');
-  const [orderSteps, setOrderSteps] = useState<OrderStepData[]>([]);
-  const [showStepChooser, setShowStepChooser] = useState(false);
-  const [currentChainGroupId, setCurrentChainGroupId] = useState<string>(() => crypto.randomUUID());
   const [deliveryType, setDeliveryType] = useState<'my_location' | 'other' | 'saved'>('my_location');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(defaultLocation?.id || null);
   const [otherAddress, setOtherAddress] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
-  const [splitExecutors, setSplitExecutors] = useState(false);
   const [noContact, setNoContact] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [createdOrderId, setCreatedOrderId] = useState('');
   const [showDelivery, setShowDelivery] = useState(true);
   const [showUrgency, setShowUrgency] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState('');
 
   const ICON_MAP: Record<string, any> = { home: Home, work: Briefcase, 'map-pin': MapPin };
 
@@ -93,10 +95,8 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
   }, [catalogItems, catalogSearch]);
 
   // Cart helpers
-  const getCartQuantity = (catalogItemId: string) => {
-    const item = cart.find(c => c.type === 'catalog' && c.catalogItemId === catalogItemId);
-    return item?.quantity || 0;
-  };
+  const getCartItem = (catalogItemId: string) => cart.find(c => c.type === 'catalog' && c.catalogItemId === catalogItemId);
+  const getCartQuantity = (catalogItemId: string) => getCartItem(catalogItemId)?.quantity || 0;
 
   const addCatalogItem = (item: typeof catalogItems extends (infer T)[] | null ? T : never) => {
     if (!item) return;
@@ -112,6 +112,8 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
         price: item.price_fixed || item.price_min || undefined,
         quantity: 1,
         unit: undefined,
+        specification: '',
+        notes: '',
       }]);
     }
   };
@@ -126,6 +128,10 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
     }
   };
 
+  const updateCartItemField = (catalogItemId: string, field: 'specification' | 'notes', value: string) => {
+    setCart(cart.map(c => c.catalogItemId === catalogItemId ? { ...c, [field]: value } : c));
+  };
+
   const addCustomItem = () => {
     if (!customText.trim()) return;
     setCart([...cart, {
@@ -138,9 +144,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
     setShowCustomInput(false);
   };
 
-  const removeCartItem = (id: string) => {
-    setCart(cart.filter(c => c.id !== id));
-  };
+  const removeCartItem = (id: string) => setCart(cart.filter(c => c.id !== id));
 
   const updateCartQuantity = (id: string, delta: number) => {
     setCart(cart.map(c => {
@@ -150,116 +154,139 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
     }).filter(c => c.quantity > 0));
   };
 
-  // Multi-step helpers
-  const addOrderStep = (relation: StepRelation) => {
-    const chainGroupId = relation === 'linked' ? currentChainGroupId : crypto.randomUUID();
-    const newStep: OrderStepData = {
-      id: crypto.randomUUID(),
-      relation,
-      chainGroupId,
-      description: '',
-      address: '',
-      recipientName: '',
-      recipientPhone: '',
-      items: [],
-    };
-    setOrderSteps(prev => [...prev, newStep]);
-    setShowStepChooser(false);
-  };
-
-  const updateOrderStep = (index: number, data: Partial<OrderStepData>) => {
-    setOrderSteps(prev => prev.map((s, i) => i === index ? { ...s, ...data } : s));
-  };
-
-  const removeOrderStep = (index: number) => {
-    setOrderSteps(prev => prev.filter((_, i) => i !== index));
-  };
-
   // Price estimate
   const priceEstimate = useMemo(() => {
     let base = 15;
     const hasPurchase = cart.some(c => c.type === 'catalog');
     if (hasPurchase) base += 10;
-    if (orderSteps.length > 0) base += orderSteps.length * 8;
     if (isUrgent) base = Math.round(base * 1.5);
     const itemsTotal = cart.reduce((sum, c) => sum + (c.price || 0) * c.quantity, 0);
-    const low = base + itemsTotal;
-    const high = Math.round((base * 1.6) + itemsTotal);
+    const stepsExtra = completedSteps.length * 8;
+    const low = base + itemsTotal + stepsExtra;
+    const high = Math.round((base * 1.6) + itemsTotal + stepsExtra);
     return { low, high };
-  }, [cart, orderSteps.length, isUrgent]);
+  }, [cart, isUrgent, completedSteps.length]);
 
-  // Order type detection
-  const getOrderType = () => {
-    if (orderSteps.length > 0) return 'CHAIN' as const;
-    if (cart.some(c => c.type === 'catalog')) return 'PURCHASE_DELIVER' as const;
-    return 'DIRECT' as const;
-  };
-
-  // Delivery info
-  const getDropoff = () => {
-    if (deliveryType === 'saved' && selectedLocationId) {
-      const loc = savedLocations.find(l => l.id === selectedLocationId);
-      return { address: loc?.address_text || '', lat: loc?.lat || null, lng: loc?.lng || null };
-    }
-    if (deliveryType === 'my_location') {
-      if (defaultLocation) return { address: defaultLocation.address_text || '', lat: defaultLocation.lat, lng: defaultLocation.lng };
-      return { address: lang === 'ar' ? 'موقعي الحالي' : 'My Current Location', lat: latitude, lng: longitude };
-    }
-    return { address: otherAddress, lat: null, lng: null };
-  };
-
-  const handleSubmit = async () => {
+  // Confirm current step
+  const handleConfirmStep = () => {
     if (cart.length === 0) {
       toast.error(lang === 'ar' ? 'أضف منتج أو طلب على الأقل' : 'Add at least one item');
       return;
     }
-    const dropoff = getDropoff();
-    if (!dropoff.address && deliveryType === 'other') {
-      toast.error(lang === 'ar' ? 'حدد عنوان التوصيل' : 'Enter delivery address');
-      return;
-    }
+    const step: CompletedOrderStep = {
+      id: crypto.randomUUID(),
+      merchantId,
+      merchantName: merchantName || (lang === 'ar' ? 'طلب مخصص' : 'Custom Order'),
+      branchId,
+      items: cart.map(c => ({
+        description: c.description,
+        quantity: c.quantity,
+        price: c.price,
+        specification: c.specification,
+        notes: c.notes,
+        type: c.type,
+      })),
+      deliveryType,
+      isUrgent,
+      estimatedPrice: priceEstimate,
+    };
+    const newSteps = [...completedSteps, step];
+    setCompletedSteps(newSteps);
+    session.addStep(step);
+    setPhase('step_confirmed');
+  };
 
+  // Handle adding next step
+  const handleAddNextStep = () => {
+    navigate('/search');
+  };
+
+  // Handle checkout
+  const handleGoToCheckout = () => {
+    setPhase('checkout');
+  };
+
+  // Handle payment
+  const handlePay = async (method: string) => {
+    setIsProcessing(true);
     try {
+      // Create the order with all steps
+      const firstStep = completedSteps[0];
       const result = await createOrder.mutateAsync({
         order: {
-          order_type: getOrderType(),
-          source_merchant_id: merchantId || null,
-          source_branch_id: branchId || branches?.[0]?.id || null,
+          order_type: completedSteps.length > 1 ? 'CHAIN' : (firstStep?.items.some(i => i.type === 'catalog') ? 'PURCHASE_DELIVER' : 'DIRECT'),
+          source_merchant_id: firstStep?.merchantId || null,
+          source_branch_id: firstStep?.branchId || null,
           pickup_address: '',
           pickup_lat: null,
           pickup_lng: null,
-          dropoff_address: dropoff.address,
-          dropoff_lat: dropoff.lat,
-          dropoff_lng: dropoff.lng,
-          notes: cart.filter(c => c.type === 'custom').map(c => c.description).join('\n') || null,
-          status: 'draft',
+          dropoff_address: '',
+          dropoff_lat: null,
+          dropoff_lng: null,
+          notes: completedSteps.map((s, i) =>
+            `[${lang === 'ar' ? 'خطوة' : 'Step'} ${i + 1}] ${s.merchantName}: ${s.items.map(item => item.description).join(', ')}`
+          ).join('\n'),
+          status: 'paid',
           totals_json: {
-            estimated_low: priceEstimate.low,
-            estimated_high: priceEstimate.high,
-            is_urgent: isUrgent,
-            split_executors: splitExecutors,
-            no_contact: noContact,
+            steps: completedSteps.length,
+            payment_method: method,
           },
         },
-        items: cart.map(c => ({
-          item_mode: c.type === 'catalog' ? 'catalog_item' : 'free_text',
-          catalog_item_id: c.catalogItemId || null,
-          free_text_description: c.description,
-          quantity: c.quantity,
-          unit: c.unit || null,
+        items: completedSteps.flatMap(s => s.items.map(item => ({
+          item_mode: item.type === 'catalog' ? 'catalog_item' : 'free_text',
+          catalog_item_id: null,
+          free_text_description: `${item.description}${item.specification ? ` — ${item.specification}` : ''}${item.notes ? ` (${item.notes})` : ''}`,
+          quantity: item.quantity,
+          unit: null,
           photo_urls: [],
-        })),
+        }))),
       });
       setCreatedOrderId(result.id);
-      setShowSuccess(true);
+      session.clearSession();
+      setPhase('pickup_options');
     } catch (error: any) {
       toast.error(error.message || (lang === 'ar' ? 'حدث خطأ' : 'Error'));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const hasCatalog = catalogItems && catalogItems.length > 0;
   const canSubmit = cart.length > 0;
 
+  // ━━━ PHASE ROUTING ━━━
+  if (phase === 'step_confirmed') {
+    return (
+      <StepConfirmationView
+        currentStep={completedSteps[completedSteps.length - 1]}
+        allSteps={completedSteps}
+        onAddStep={handleAddNextStep}
+        onCheckout={handleGoToCheckout}
+      />
+    );
+  }
+
+  if (phase === 'checkout') {
+    return (
+      <FinalCheckoutView
+        steps={completedSteps}
+        onPay={handlePay}
+        onBack={() => setPhase('step_confirmed')}
+        isProcessing={isProcessing}
+      />
+    );
+  }
+
+  if (phase === 'pickup_options') {
+    return (
+      <PickupOptionsView
+        orderId={createdOrderId}
+        onComplete={() => navigate(`/orders/${createdOrderId}`)}
+      />
+    );
+  }
+
+  // ━━━ PHASE: SHOPPING ━━━
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* Header */}
@@ -269,9 +296,18 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
             <BackArrow className="h-5 w-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold truncate">{merchantName || (lang === 'ar' ? 'طلب جديد' : 'New Order')}</h1>
-            {merchant && <p className="text-xs text-muted-foreground truncate">{lang === 'ar' ? 'اختر المنتجات أو أضف طلب مخصص' : 'Select products or add custom request'}</p>}
+            <h1 className="font-bold truncate">
+              {completedSteps.length > 0
+                ? `${lang === 'ar' ? 'الخطوة' : 'Step'} ${completedSteps.length + 1}`
+                : merchantName || (lang === 'ar' ? 'طلب جديد' : 'New Order')}
+            </h1>
+            {merchant && <p className="text-xs text-muted-foreground truncate">{merchantName}</p>}
           </div>
+          {completedSteps.length > 0 && (
+            <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-bold">
+              {completedSteps.length} {lang === 'ar' ? 'خطوة سابقة' : 'prev steps'}
+            </span>
+          )}
           <span className="text-lg font-bold font-en text-primary">YA</span>
         </div>
       </div>
@@ -281,7 +317,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
         {/* ━━━ 1️⃣ PRODUCTS (Marketplace) ━━━ */}
         {hasCatalog && (
           <section className="space-y-3">
-            {/* Search within merchant */}
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -295,48 +330,77 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
               </div>
             </div>
 
-            {/* Product grid */}
             <div className="space-y-2">
               {filteredCatalog.map(item => {
                 const photos = item.photos as string[] | null;
                 const qty = getCartQuantity(item.id);
                 const price = item.price_type === 'fixed' ? item.price_fixed : item.price_min;
                 const name = lang === 'ar' && item.name_ar ? item.name_ar : item.name;
+                const cartItem = getCartItem(item.id);
 
                 return (
-                  <div key={item.id} className="flex items-center gap-3 p-3 rounded-2xl border bg-card hover:shadow-sm transition-shadow">
-                    {photos && photos.length > 0 ? (
-                      <img src={photos[0]} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                        <Package className="h-6 w-6 text-muted-foreground" />
+                  <div key={item.id} className="rounded-2xl border bg-card overflow-hidden hover:shadow-sm transition-shadow">
+                    <div className="flex items-center gap-3 p-3">
+                      {photos && photos.length > 0 ? (
+                        <img src={photos[0]} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{name}</p>
+                        {price != null && (
+                          <p className="text-sm text-primary font-medium">
+                            {price} {lang === 'ar' ? 'ر.س' : 'SAR'}
+                          </p>
+                        )}
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm truncate">{name}</p>
-                      {price != null && (
-                        <p className="text-sm text-primary font-medium">
-                          {price} {lang === 'ar' ? 'ر.س' : 'SAR'}
-                        </p>
+                      {qty === 0 ? (
+                        <button
+                          onClick={() => addCatalogItem(item)}
+                          className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:brightness-95 transition-all shrink-0"
+                        >
+                          <Plus className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => decrementCatalogItem(item.id)} className="w-8 h-8 rounded-lg border flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="w-8 text-center font-bold text-sm">{qty}</span>
+                          <button onClick={() => addCatalogItem(item)} className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
-                    {qty === 0 ? (
-                      <button
-                        onClick={() => addCatalogItem(item)}
-                        className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center hover:brightness-95 transition-all shrink-0"
+
+                    {/* Inline specification & notes for selected items */}
+                    {qty > 0 && cartItem && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="px-3 pb-3"
                       >
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => decrementCatalogItem(item.id)} className="w-8 h-8 rounded-lg border flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center font-bold text-sm">{qty}</span>
-                        <button onClick={() => addCatalogItem(item)} className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={cartItem.specification || ''}
+                            onChange={e => updateCartItemField(item.id, 'specification', e.target.value)}
+                            placeholder={lang === 'ar' ? 'وصف ما تريد — مثال: ثوب أبيض مقاس XL' : 'Describe what you want — e.g. White thobe size XL'}
+                            className="flex-1 rounded-xl border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                          />
+                          <input
+                            type="text"
+                            value={cartItem.notes || ''}
+                            onChange={e => updateCartItemField(item.id, 'notes', e.target.value)}
+                            placeholder={lang === 'ar' ? 'ملاحظات — مثال: لو ما لقيت الأبيض خذ الكحلي' : 'Notes — e.g. If not available, get navy'}
+                            className="flex-1 rounded-xl border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                          />
+                        </div>
+                      </motion.div>
                     )}
                   </div>
                 );
@@ -345,7 +409,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           </section>
         )}
 
-        {/* ━━━ 2️⃣ CUSTOM REQUEST (Open Task) ━━━ */}
+        {/* ━━━ 2️⃣ CUSTOM REQUEST ━━━ */}
         <section className="space-y-3">
           {hasCatalog && (
             <p className="text-sm text-muted-foreground font-medium">
@@ -387,7 +451,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           )}
         </section>
 
-        {/* ━━━ 3️⃣ CART (Live Summary) ━━━ */}
+        {/* ━━━ 3️⃣ CART ━━━ */}
         {cart.length > 0 && (
           <section className="space-y-3">
             <h3 className="font-bold flex items-center gap-2">
@@ -425,55 +489,10 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           </section>
         )}
 
-        {/* ━━━ 4️⃣ MULTI-STEP TASKS ━━━ */}
-        <section className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {orderSteps.map((step, i) => {
-              const isLinkedToPrev = i === 0
-                ? step.relation === 'linked'
-                : step.relation === 'linked' && step.chainGroupId === orderSteps[i - 1]?.chainGroupId;
-              return (
-                <MultiStepTaskEntry
-                  key={step.id}
-                  step={step}
-                  stepIndex={i}
-                  totalSteps={orderSteps.length}
-                  isLinkedToPrevious={isLinkedToPrev}
-                  onUpdate={(data) => updateOrderStep(i, data)}
-                  onRemove={() => removeOrderStep(i)}
-                />
-              );
-            })}
-          </AnimatePresence>
-
-          {/* Step Type Chooser */}
-          <AnimatePresence>
-            {showStepChooser && (
-              <StepTypeChooser
-                onSelect={addOrderStep}
-                onCancel={() => setShowStepChooser(false)}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Add Step Button */}
-          {!showStepChooser && (
-            <button
-              onClick={() => setShowStepChooser(true)}
-              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-primary/30 text-primary font-bold flex items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              {lang === 'ar'
-                ? `إضافة خطوة ${orderSteps.length === 0 ? 'ثانية' : (orderSteps.length + 2).toString()}`
-                : `Add Step ${orderSteps.length + 2}`}
-            </button>
-          )}
-        </section>
-
         {/* ━━━ PRAYER TIME NOTICE ━━━ */}
         <PrayerTimeNotice />
 
-        {/* ━━━ 5️⃣ DELIVERY ━━━ */}
+        {/* ━━━ 4️⃣ DELIVERY ━━━ */}
         <section className="space-y-3">
           <button onClick={() => setShowDelivery(!showDelivery)} className="w-full flex items-center justify-between">
             <h3 className="font-bold flex items-center gap-2">
@@ -485,7 +504,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
 
           {showDelivery && (
             <div className="space-y-2">
-              {/* My location / default */}
               <button
                 onClick={() => {
                   setDeliveryType('my_location');
@@ -505,7 +523,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                 </div>
               </button>
 
-              {/* Saved locations */}
               {savedLocations.filter(l => l.id !== defaultLocation?.id).map(loc => {
                 const IconComp = ICON_MAP[loc.icon || 'map-pin'] || MapPin;
                 return (
@@ -526,7 +543,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                 );
               })}
 
-              {/* Other */}
               <button
                 onClick={() => setDeliveryType('other')}
                 className={cn(
@@ -549,7 +565,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           )}
         </section>
 
-        {/* ━━━ 6️⃣ URGENCY & PREFERENCES ━━━ */}
+        {/* ━━━ 5️⃣ URGENCY ━━━ */}
         <section className="space-y-3">
           <button onClick={() => setShowUrgency(!showUrgency)} className="w-full flex items-center justify-between">
             <h3 className="font-bold flex items-center gap-2">
@@ -584,23 +600,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                 </button>
               </div>
 
-              {/* Smart split suggestion */}
-              {isUrgent && orderSteps.length > 0 && (
-                <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
-                  <p className="text-sm font-medium">
-                    <Users className="h-4 w-4 inline me-1 text-primary" />
-                    {lang === 'ar' ? 'نقدر نقسم المهام لتخلص أسرع' : 'Split tasks for faster delivery'}
-                  </p>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <div className={cn("w-5 h-5 rounded border-2 flex items-center justify-center transition-colors", splitExecutors ? "bg-primary border-primary" : "border-muted-foreground/30")}>
-                      {splitExecutors && <Check className="h-3 w-3 text-primary-foreground" />}
-                    </div>
-                    <span className="text-sm">{lang === 'ar' ? 'تقسيم المهام' : 'Split tasks'}</span>
-                  </label>
-                </div>
-              )}
-
-              {/* No-contact */}
               <button
                 onClick={() => setNoContact(!noContact)}
                 className={cn(
@@ -619,7 +618,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
         </section>
       </div>
 
-      {/* ━━━ 7️⃣ STICKY BOTTOM BAR ━━━ */}
+      {/* ━━━ STICKY BOTTOM BAR ━━━ */}
       <div className="fixed bottom-0 inset-x-0 z-20 bg-background border-t border-border p-4 safe-area-bottom">
         <div className="container flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -629,7 +628,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
             </p>
           </div>
           <button
-            onClick={handleSubmit}
+            onClick={handleConfirmStep}
             disabled={!canSubmit || createOrder.isPending}
             className="px-8 py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold flex items-center gap-2 disabled:opacity-50 hover:brightness-95 transition-all shrink-0"
           >
@@ -644,29 +643,6 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           </button>
         </div>
       </div>
-
-      {/* Modals */}
-      <PaymentModal
-        open={showPayment}
-        onClose={() => setShowPayment(false)}
-        onSuccess={(method) => {
-          setShowPayment(false);
-          handleSubmit();
-        }}
-        amount={priceEstimate.high}
-        currency={lang === 'ar' ? 'ر.س' : 'SAR'}
-      />
-      <PaymentSuccessModal
-        open={showSuccess}
-        onClose={() => {
-          setShowSuccess(false);
-          navigate(`/orders/${createdOrderId}`);
-        }}
-        orderId={createdOrderId}
-        amount={priceEstimate.high}
-        currency={lang === 'ar' ? 'ر.س' : 'SAR'}
-        paymentMethod="mada"
-      />
     </div>
   );
 }

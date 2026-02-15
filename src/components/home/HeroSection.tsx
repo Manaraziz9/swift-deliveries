@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
@@ -9,12 +8,8 @@ const easeOut = [0.25, 0.46, 0.45, 0.94] as const;
 export default function HeroSection() {
   const { dir } = useLang();
   const navigate = useNavigate();
-  const [pressed, setPressed] = useState(false);
 
-  const handleCTA = () => {
-    setPressed(true);
-    setTimeout(() => navigate('/create-order'), 600);
-  };
+
 
   return (
     <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-background">
@@ -65,21 +60,6 @@ export default function HeroSection() {
         </span>
       </motion.div>
 
-      {/* Single CTA — Muted Orange pill */}
-      <motion.button
-        onClick={handleCTA}
-        disabled={pressed}
-        className="mt-6 sm:mt-8 bg-primary text-primary-foreground text-lg sm:text-xl font-bold px-12 sm:px-16 py-4 sm:py-5 rounded-full shadow-ya-accent transition-all duration-200 hover:brightness-95 hover:shadow-ya-md"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.9, ease: easeOut }}
-        whileTap={{ scale: 0.97 }}
-        whileHover={{ scale: 1.03 }}
-      >
-        {pressed
-          ? dir === 'rtl' ? 'YA شغّالة…' : 'YA is on it…'
-          : dir === 'rtl' ? 'اطلب الآن' : 'Order Now'}
-      </motion.button>
     </section>
   );
 }

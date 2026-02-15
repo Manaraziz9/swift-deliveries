@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FadeIn, staggerContainer, staggerItem } from '@/components/motion/MotionWrappers';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import { useLang } from '@/contexts/LangContext';
@@ -88,10 +90,12 @@ export default function OrdersPage() {
       <TopBar />
       
       <div className="container py-6">
-        <h2 className="text-lg font-bold mb-4">{t('orders')}</h2>
+        <FadeIn>
+          <h2 className="text-lg font-bold mb-4">{t('orders')}</h2>
+        </FadeIn>
         
         {orders.length === 0 ? (
-          <div className="text-center py-12">
+          <FadeIn delay={0.1} className="text-center py-12">
             <ListOrdered className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
               {lang === 'ar' ? 'ما عندك طلبات حالياً' : 'No orders yet'}
@@ -102,35 +106,42 @@ export default function OrdersPage() {
             >
               {lang === 'ar' ? 'اطلب الآن' : 'Order Now'}
             </Link>
-          </div>
+          </FadeIn>
         ) : (
-          <div className="space-y-3">
+          <motion.div
+            className="space-y-3"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
             {orders.map(order => {
               const status = statusLabels[order.status] || statusLabels.draft;
               const StatusIcon = status.icon;
               return (
-                <Link to={`/orders/${order.id}`} key={order.id} className="block rounded-xl bg-card shadow-ya-sm p-4 animate-fade-in hover:shadow-ya-md transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-sm">
-                        {lang === 'ar' ? 'طلب' : 'Order'} #{order.id.slice(0, 8)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(order.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US')}
-                      </p>
-                      {order.notes && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">{order.notes}</p>
-                      )}
+                <motion.div key={order.id} variants={staggerItem}>
+                  <Link to={`/orders/${order.id}`} className="block rounded-xl bg-card shadow-ya-sm p-4 hover:shadow-ya-md transition-shadow">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-sm">
+                          {lang === 'ar' ? 'طلب' : 'Order'} #{order.id.slice(0, 8)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(order.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US')}
+                        </p>
+                        {order.notes && (
+                          <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">{order.notes}</p>
+                        )}
+                      </div>
+                      <span className={cn("flex items-center gap-1 text-xs font-medium", status.color)}>
+                        <StatusIcon className="h-3.5 w-3.5" />
+                        {lang === 'ar' ? status.ar : status.en}
+                      </span>
                     </div>
-                    <span className={cn("flex items-center gap-1 text-xs font-medium", status.color)}>
-                      <StatusIcon className="h-3.5 w-3.5" />
-                      {lang === 'ar' ? status.ar : status.en}
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
 

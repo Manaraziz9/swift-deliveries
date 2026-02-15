@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FadeIn, StaggerList, StaggerItem, staggerContainer, staggerItem } from '@/components/motion/MotionWrappers';
 import { Search, Map, List, Navigation, Loader2, X, ArrowLeft, ArrowRight, Clock, Star, MapPin, Mic } from 'lucide-react';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
@@ -185,9 +187,11 @@ export default function SearchPage() {
       {/* Content */}
       <div className="container py-4">
         {viewMode === 'map' ? (
-          <div className="h-[400px] rounded-xl overflow-hidden shadow-card">
-            <MerchantsMap markers={mapMarkers} onMarkerClick={handleMarkerClick} center={mapCenter} />
-          </div>
+          <FadeIn>
+            <div className="h-[400px] rounded-xl overflow-hidden shadow-card">
+              <MerchantsMap markers={mapMarkers} onMarkerClick={handleMarkerClick} center={mapCenter} />
+            </div>
+          </FadeIn>
         ) : isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
@@ -195,23 +199,29 @@ export default function SearchPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
+          <FadeIn className="text-center py-16 text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">{lang === 'ar' ? 'لا توجد نتائج' : 'No results found'}</p>
-          </div>
+          </FadeIn>
         ) : (
-          <div className="space-y-3">
+          <motion.div
+            className="space-y-3"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+          >
             {filtered.map(({ merchant, branch, distance }, i) => (
-              <SearchResultCard
-                key={merchant.id}
-                merchant={merchant}
-                branch={branch || null}
-                quality={qualities?.find(q => q.entity_id === merchant.id) || null}
-                distance={distance}
-                index={i}
-              />
+              <motion.div key={merchant.id} variants={staggerItem}>
+                <SearchResultCard
+                  merchant={merchant}
+                  branch={branch || null}
+                  quality={qualities?.find(q => q.entity_id === merchant.id) || null}
+                  distance={distance}
+                  index={i}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* List below map */}

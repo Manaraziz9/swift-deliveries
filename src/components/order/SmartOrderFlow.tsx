@@ -18,6 +18,10 @@ import PaymentModal from '@/components/payment/PaymentModal';
 import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
 import VoiceInputButton from '@/components/shared/VoiceInputButton';
 import PrayerTimeNotice from '@/components/order/PrayerTimeNotice';
+import StepTypeChooser, { type StepRelation } from './StepTypeChooser';
+import MultiStepTaskEntry, { type OrderStepData } from './MultiStepTaskEntry';
+import OrderStepsSummary from './OrderStepsSummary';
+import { AnimatePresence } from 'framer-motion';
 
 interface SmartOrderFlowProps {
   merchantId?: string;
@@ -34,12 +38,7 @@ interface CartItem {
   unit?: string;
 }
 
-interface ExtraStep {
-  description: string;
-  recipientName: string;
-  recipientPhone: string;
-  address: string;
-}
+// OrderStepData is now imported from MultiStepTaskEntry
 
 export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowProps) {
   const { lang, dir } = useLang();
@@ -60,9 +59,9 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
   const [catalogSearch, setCatalogSearch] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customText, setCustomText] = useState('');
-  const [extraSteps, setExtraSteps] = useState<ExtraStep[]>([]);
-  const [addingStep, setAddingStep] = useState(false);
-  const [newStep, setNewStep] = useState<ExtraStep>({ description: '', recipientName: '', recipientPhone: '', address: '' });
+  const [orderSteps, setOrderSteps] = useState<OrderStepData[]>([]);
+  const [showStepChooser, setShowStepChooser] = useState(false);
+  const [currentChainGroupId, setCurrentChainGroupId] = useState<string>(() => crypto.randomUUID());
   const [deliveryType, setDeliveryType] = useState<'my_location' | 'other' | 'saved'>('my_location');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(defaultLocation?.id || null);
   const [otherAddress, setOtherAddress] = useState('');
@@ -151,32 +150,47 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
     }).filter(c => c.quantity > 0));
   };
 
-  // Extra steps
-  const addExtraStep = () => {
-    if (!newStep.description.trim()) return;
-    setExtraSteps([...extraSteps, { ...newStep }]);
-    setNewStep({ description: '', recipientName: '', recipientPhone: '', address: '' });
-    setAddingStep(false);
+  // Multi-step helpers
+  const addOrderStep = (relation: StepRelation) => {
+    const chainGroupId = relation === 'linked' ? currentChainGroupId : crypto.randomUUID();
+    const newStep: OrderStepData = {
+      id: crypto.randomUUID(),
+      relation,
+      chainGroupId,
+      description: '',
+      address: '',
+      recipientName: '',
+      recipientPhone: '',
+      items: [],
+    };
+    setOrderSteps(prev => [...prev, newStep]);
+    setShowStepChooser(false);
   };
 
-  const removeExtraStep = (i: number) => setExtraSteps(extraSteps.filter((_, idx) => idx !== i));
+  const updateOrderStep = (index: number, data: Partial<OrderStepData>) => {
+    setOrderSteps(prev => prev.map((s, i) => i === index ? { ...s, ...data } : s));
+  };
+
+  const removeOrderStep = (index: number) => {
+    setOrderSteps(prev => prev.filter((_, i) => i !== index));
+  };
 
   // Price estimate
   const priceEstimate = useMemo(() => {
     let base = 15;
     const hasPurchase = cart.some(c => c.type === 'catalog');
     if (hasPurchase) base += 10;
-    if (extraSteps.length > 0) base += extraSteps.length * 8;
+    if (orderSteps.length > 0) base += orderSteps.length * 8;
     if (isUrgent) base = Math.round(base * 1.5);
     const itemsTotal = cart.reduce((sum, c) => sum + (c.price || 0) * c.quantity, 0);
     const low = base + itemsTotal;
     const high = Math.round((base * 1.6) + itemsTotal);
     return { low, high };
-  }, [cart, extraSteps.length, isUrgent]);
+  }, [cart, orderSteps.length, isUrgent]);
 
   // Order type detection
   const getOrderType = () => {
-    if (extraSteps.length > 0) return 'CHAIN' as const;
+    if (orderSteps.length > 0) return 'CHAIN' as const;
     if (cart.some(c => c.type === 'catalog')) return 'PURCHASE_DELIVER' as const;
     return 'DIRECT' as const;
   };
@@ -411,65 +425,47 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
           </section>
         )}
 
-        {/* ━━━ 4️⃣ EXTRA STEPS ━━━ */}
+        {/* ━━━ 4️⃣ MULTI-STEP TASKS ━━━ */}
         <section className="space-y-3">
-          {extraSteps.length > 0 && (
-            <div className="space-y-2">
-              {extraSteps.map((s, i) => (
-                <div key={i} className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
-                    {i + 2}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{s.description}</p>
-                    {s.recipientName && <p className="text-xs text-muted-foreground">{s.recipientName} • {s.recipientPhone}</p>}
-                  </div>
-                  <button onClick={() => removeExtraStep(i)} className="p-1 text-destructive hover:bg-destructive/10 rounded-lg shrink-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {orderSteps.map((step, i) => {
+              const isLinkedToPrev = i === 0
+                ? step.relation === 'linked'
+                : step.relation === 'linked' && step.chainGroupId === orderSteps[i - 1]?.chainGroupId;
+              return (
+                <MultiStepTaskEntry
+                  key={step.id}
+                  step={step}
+                  stepIndex={i}
+                  totalSteps={orderSteps.length}
+                  isLinkedToPrevious={isLinkedToPrev}
+                  onUpdate={(data) => updateOrderStep(i, data)}
+                  onRemove={() => removeOrderStep(i)}
+                />
+              );
+            })}
+          </AnimatePresence>
 
-          {addingStep ? (
-            <div className="space-y-3 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5">
-              <input
-                value={newStep.description}
-                onChange={e => setNewStep(p => ({ ...p, description: e.target.value }))}
-                placeholder={lang === 'ar' ? 'وصف الخطوة...' : 'Step description...'}
-                className="w-full rounded-xl border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                autoFocus
+          {/* Step Type Chooser */}
+          <AnimatePresence>
+            {showStepChooser && (
+              <StepTypeChooser
+                onSelect={addOrderStep}
+                onCancel={() => setShowStepChooser(false)}
               />
-              <input
-                value={newStep.recipientName}
-                onChange={e => setNewStep(p => ({ ...p, recipientName: e.target.value }))}
-                placeholder={lang === 'ar' ? 'اسم المستلم (اختياري)' : 'Recipient name (optional)'}
-                className="w-full rounded-xl border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              <input
-                value={newStep.recipientPhone}
-                onChange={e => setNewStep(p => ({ ...p, recipientPhone: e.target.value }))}
-                placeholder={lang === 'ar' ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
-                className="w-full rounded-xl border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                dir="ltr"
-              />
-              <div className="flex gap-2">
-                <button onClick={() => setAddingStep(false)} className="flex-1 py-2.5 rounded-xl border text-sm font-medium">
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button onClick={addExtraStep} disabled={!newStep.description.trim()} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50">
-                  {lang === 'ar' ? 'إضافة' : 'Add'}
-                </button>
-              </div>
-            </div>
-          ) : (
+            )}
+          </AnimatePresence>
+
+          {/* Add Step Button */}
+          {!showStepChooser && (
             <button
-              onClick={() => setAddingStep(true)}
-              className="w-full py-3 rounded-2xl border-2 border-dashed border-border text-muted-foreground font-medium flex items-center justify-center gap-2 hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all text-sm"
+              onClick={() => setShowStepChooser(true)}
+              className="w-full py-3.5 rounded-2xl border-2 border-dashed border-primary/30 text-primary font-bold flex items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all text-sm"
             >
               <Plus className="h-4 w-4" />
-              {lang === 'ar' ? 'إضافة خطوة ثانية' : 'Add Another Step'}
+              {lang === 'ar'
+                ? `إضافة خطوة ${orderSteps.length === 0 ? 'ثانية' : (orderSteps.length + 2).toString()}`
+                : `Add Step ${orderSteps.length + 2}`}
             </button>
           )}
         </section>
@@ -589,7 +585,7 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
               </div>
 
               {/* Smart split suggestion */}
-              {isUrgent && extraSteps.length > 0 && (
+              {isUrgent && orderSteps.length > 0 && (
                 <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
                   <p className="text-sm font-medium">
                     <Users className="h-4 w-4 inline me-1 text-primary" />

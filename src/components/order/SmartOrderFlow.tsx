@@ -12,9 +12,12 @@ import { useCreateOrder } from '@/hooks/useOrders';
 import { useMerchant, useBranches, useCatalogItems } from '@/hooks/useMerchants';
 import { useUserLocations } from '@/hooks/useUserLocations';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { toast } from 'sonner';
 import PaymentModal from '@/components/payment/PaymentModal';
 import PaymentSuccessModal from '@/components/payment/PaymentSuccessModal';
+import VoiceInputButton from '@/components/shared/VoiceInputButton';
+import PrayerTimeNotice from '@/components/order/PrayerTimeNotice';
 
 interface SmartOrderFlowProps {
   merchantId?: string;
@@ -50,7 +53,8 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
   const { locations: savedLocations, defaultLocation } = useUserLocations();
   const { latitude, longitude, loading: geoLoading, requestLocation } = useGeolocation();
   const createOrder = useCreateOrder();
-
+  const catalogVoice = useVoiceInput({ lang, onResult: (text) => setCatalogSearch(text) });
+  const customVoice = useVoiceInput({ lang, onResult: (text) => setCustomText(prev => prev + ' ' + text) });
   // State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -270,8 +274,11 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
                 value={catalogSearch}
                 onChange={e => setCatalogSearch(e.target.value)}
                 placeholder={lang === 'ar' ? 'ابحث عن منتج أو اكتب اللي تبيه' : 'Search for a product'}
-                className="w-full ps-10 pe-4 py-3 rounded-2xl border-2 bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                className="w-full ps-10 pe-12 py-3 rounded-2xl border-2 bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
               />
+              <div className="absolute end-2 top-1/2 -translate-y-1/2">
+                <VoiceInputButton isListening={catalogVoice.isListening} isSupported={catalogVoice.isSupported} onToggle={catalogVoice.toggle} />
+              </div>
             </div>
 
             {/* Product grid */}
@@ -334,13 +341,18 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
 
           {showCustomInput ? (
             <div className="space-y-3 p-4 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5">
-              <textarea
-                value={customText}
-                onChange={e => setCustomText(e.target.value)}
-                placeholder={lang === 'ar' ? 'اكتب تفاصيل طلبك هنا… مثال: توصيل ملف، شراء منتج غير موجود' : 'Describe your request here...'}
-                className="w-full rounded-xl border bg-background px-4 py-3 text-sm min-h-[80px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                autoFocus
-              />
+              <div className="relative">
+                <textarea
+                  value={customText}
+                  onChange={e => setCustomText(e.target.value)}
+                  placeholder={lang === 'ar' ? 'اكتب تفاصيل طلبك هنا… مثال: توصيل ملف، شراء منتج غير موجود' : 'Describe your request here...'}
+                  className="w-full rounded-xl border bg-background px-4 py-3 pe-12 text-sm min-h-[80px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                  autoFocus
+                />
+                <div className="absolute end-2 top-2">
+                  <VoiceInputButton isListening={customVoice.isListening} isSupported={customVoice.isSupported} onToggle={customVoice.toggle} />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => { setShowCustomInput(false); setCustomText(''); }} className="flex-1 py-2.5 rounded-xl border text-sm font-medium">
                   {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -461,6 +473,9 @@ export default function SmartOrderFlow({ merchantId, branchId }: SmartOrderFlowP
             </button>
           )}
         </section>
+
+        {/* ━━━ PRAYER TIME NOTICE ━━━ */}
+        <PrayerTimeNotice />
 
         {/* ━━━ 5️⃣ DELIVERY ━━━ */}
         <section className="space-y-3">

@@ -21,6 +21,7 @@ import MerchantOverview from "./pages/merchant/MerchantOverview";
 import MerchantCatalog from "./pages/merchant/MerchantCatalog";
 import MerchantBranches from "./pages/merchant/MerchantBranches";
 import MerchantOrders from "./pages/merchant/MerchantOrders";
+import ProviderDashboard from "./pages/ProviderDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/create-order" element={<CreateOrderPage />} />
+                <Route path="/provider" element={<ProviderDashboard />} />
                 {/* Merchant Portal */}
                 <Route path="/merchant" element={<MerchantDashboard />}>
                   <Route index element={<MerchantOverview />} />

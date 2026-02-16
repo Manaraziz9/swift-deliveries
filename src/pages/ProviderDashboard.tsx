@@ -1,39 +1,42 @@
-import { useState, useMemo } from 'react';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProviderOrders, useUpdateStageStatus } from '@/hooks/useProviderOrders';
+import OrderChat from '@/components/chat/OrderChat';
+import EscrowStatusCard from '@/components/order/EscrowStatusCard';
 import {
-  LayoutDashboard, Package, ClipboardList, Star,
-  ArrowLeft, ArrowRight, Loader2, LogIn, TrendingUp,
-  CheckCircle, Clock, AlertCircle,
+  Package, ClipboardList, Star, ArrowLeft, ArrowRight,
+  Loader2, LogIn, TrendingUp, CheckCircle, Clock,
+  AlertCircle, MessageCircle, Play, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
-// Mock provider data for MVP
-const mockStats = {
-  activeOrders: 3,
-  completedToday: 7,
-  pendingOrders: 2,
-  rating: 4.8,
-  totalEarnings: 1250,
+const stageLabels: Record<string, { ar: string; en: string }> = {
+  purchase: { ar: 'الشراء', en: 'Purchase' },
+  pickup: { ar: 'الاستلام', en: 'Pickup' },
+  dropoff: { ar: 'التوصيل', en: 'Delivery' },
+  handover: { ar: 'التسليم', en: 'Handover' },
+  onsite: { ar: 'في الموقع', en: 'On-site' },
 };
-
-const mockOrders = [
-  { id: '1', status: 'pending', customerName: 'أحمد', description: 'توصيل طرد من حي النزهة', amount: 35, createdAt: new Date() },
-  { id: '2', status: 'in_progress', customerName: 'سارة', description: 'شراء مستلزمات من جرير', amount: 85, createdAt: new Date() },
-  { id: '3', status: 'in_progress', customerName: 'خالد', description: 'توصيل ملف للمكتب', amount: 25, createdAt: new Date() },
-  { id: '4', status: 'completed', customerName: 'نورة', description: 'شراء ورد وتوصيل', amount: 120, createdAt: new Date(Date.now() - 3600000) },
-];
 
 export default function ProviderDashboard() {
   const { lang, dir } = useLang();
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
-  const [activeTab, setActiveTab] = useState<'overview' | 'active' | 'history'>('overview');
 
-  if (loading) {
+  const { data: orders = [], isLoading } = useProviderOrders();
+  const updateStage = useUpdateStageStatus();
+
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -51,28 +54,46 @@ export default function ProviderDashboard() {
     );
   }
 
+  const filteredOrders = activeTab === 'active'
+    ? orders.filter((o: any) => o.status !== 'completed' && o.status !== 'canceled')
+    : activeTab === 'completed'
+    ? orders.filter((o: any) => o.status === 'completed')
+    : orders;
+
+  const activeCount = orders.filter((o: any) => o.status !== 'completed' && o.status !== 'canceled').length;
+  const completedCount = orders.filter((o: any) => o.status === 'completed').length;
+
+  const handleStageAction = (stageId: string, newStatus: string) => {
+    updateStage.mutate({ stageId, status: newStatus }, {
+      onSuccess: () => {
+        toast.success(lang === 'ar' ? 'تم تحديث الحالة' : 'Status updated');
+      },
+      onError: () => {
+        toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error updating status');
+      },
+    });
+  };
+
   const statusIcon = (status: string) => {
-    if (status === 'completed') return <CheckCircle className="h-4 w-4 text-success" />;
-    if (status === 'in_progress') return <Clock className="h-4 w-4 text-primary" />;
-    return <AlertCircle className="h-4 w-4 text-warning" />;
+    if (status === 'completed') return <CheckCircle className="h-4 w-4 text-emerald" />;
+    if (status === 'in_progress' || status === 'paid') return <Clock className="h-4 w-4 text-primary" />;
+    return <AlertCircle className="h-4 w-4 text-amber-500" />;
   };
 
   const statusLabel = (status: string) => {
     if (lang === 'ar') {
       if (status === 'completed') return 'مكتمل';
       if (status === 'in_progress') return 'جاري التنفيذ';
-      return 'بانتظار القبول';
+      if (status === 'paid') return 'مدفوع';
+      if (status === 'canceled') return 'ملغي';
+      return 'بانتظار';
     }
     if (status === 'completed') return 'Completed';
     if (status === 'in_progress') return 'In Progress';
+    if (status === 'paid') return 'Paid';
+    if (status === 'canceled') return 'Canceled';
     return 'Pending';
   };
-
-  const filteredOrders = activeTab === 'active'
-    ? mockOrders.filter(o => o.status !== 'completed')
-    : activeTab === 'history'
-    ? mockOrders.filter(o => o.status === 'completed')
-    : mockOrders;
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -90,42 +111,29 @@ export default function ProviderDashboard() {
         </div>
       </div>
 
-      <div className="container py-4 space-y-6">
+      <div className="container py-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card border p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'طلبات نشطة' : 'Active'}</span>
-            </div>
-            <p className="text-2xl font-bold">{mockStats.activeOrders}</p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-card border p-3 text-center">
+            <ClipboardList className="h-4 w-4 mx-auto mb-1 text-primary" />
+            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'نشطة' : 'Active'}</p>
+            <p className="text-xl font-bold">{activeCount}</p>
           </div>
-          <div className="rounded-2xl bg-card border p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'مكتمل اليوم' : 'Today'}</span>
-            </div>
-            <p className="text-2xl font-bold">{mockStats.completedToday}</p>
+          <div className="rounded-2xl bg-card border p-3 text-center">
+            <CheckCircle className="h-4 w-4 mx-auto mb-1 text-emerald" />
+            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'مكتمل' : 'Done'}</p>
+            <p className="text-xl font-bold">{completedCount}</p>
           </div>
-          <div className="rounded-2xl bg-card border p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'التقييم' : 'Rating'}</span>
-            </div>
-            <p className="text-2xl font-bold">{mockStats.rating}</p>
-          </div>
-          <div className="rounded-2xl bg-card border p-4 space-y-1">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-success" />
-              <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'الأرباح' : 'Earnings'}</span>
-            </div>
-            <p className="text-2xl font-bold text-primary">{mockStats.totalEarnings} <span className="text-xs">{lang === 'ar' ? 'ر.س' : 'SAR'}</span></p>
+          <div className="rounded-2xl bg-card border p-3 text-center">
+            <TrendingUp className="h-4 w-4 mx-auto mb-1 text-primary" />
+            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
+            <p className="text-xl font-bold">{orders.length}</p>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex rounded-xl border bg-card overflow-hidden">
-          {(['overview', 'active', 'history'] as const).map(tab => (
+          {(['all', 'active', 'completed'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -135,8 +143,8 @@ export default function ProviderDashboard() {
               )}
             >
               {lang === 'ar'
-                ? tab === 'overview' ? 'الكل' : tab === 'active' ? 'نشطة' : 'مكتمل'
-                : tab === 'overview' ? 'All' : tab === 'active' ? 'Active' : 'History'}
+                ? tab === 'all' ? 'الكل' : tab === 'active' ? 'نشطة' : 'مكتمل'
+                : tab === 'all' ? 'All' : tab === 'active' ? 'Active' : 'Completed'}
             </button>
           ))}
         </div>
@@ -149,43 +157,173 @@ export default function ProviderDashboard() {
               <p className="text-sm">{lang === 'ar' ? 'لا توجد طلبات' : 'No orders'}</p>
             </div>
           ) : (
-            filteredOrders.map(order => (
-              <div key={order.id} className="rounded-2xl bg-card border p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm">{order.description}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{order.customerName}</p>
-                  </div>
-                  <span className="text-sm font-bold text-primary whitespace-nowrap">
-                    {order.amount} {lang === 'ar' ? 'ر.س' : 'SAR'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    {statusIcon(order.status)}
-                    <span className="text-xs font-medium">{statusLabel(order.status)}</span>
-                  </div>
-                  {order.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button className="px-4 py-1.5 rounded-lg border text-xs font-medium hover:bg-muted transition-colors">
-                        {lang === 'ar' ? 'رفض' : 'Decline'}
-                      </button>
-                      <button className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:brightness-95 transition-all">
-                        {lang === 'ar' ? 'قبول' : 'Accept'}
-                      </button>
+            filteredOrders.map((order: any) => {
+              const isExpanded = expandedOrder === order.id;
+              const stages = (order.order_stages || []).sort((a: any, b: any) => a.sequence_no - b.sequence_no);
+
+              return (
+                <motion.div
+                  key={order.id}
+                  layout
+                  className="rounded-2xl bg-card border overflow-hidden"
+                >
+                  {/* Order header */}
+                  <button
+                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                    className="w-full p-4 text-start"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {statusIcon(order.status)}
+                          <span className="text-xs font-medium">{statusLabel(order.status)}</span>
+                        </div>
+                        <p className="font-bold text-sm truncate">
+                          #{order.id.slice(0, 8)} — {order.order_type}
+                        </p>
+                        {order.pickup_address && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{order.pickup_address}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {order.totals_json?.total && (
+                          <span className="text-sm font-bold text-primary whitespace-nowrap">
+                            {Number(order.totals_json.total).toFixed(0)} {lang === 'ar' ? 'ر.س' : 'SAR'}
+                          </span>
+                        )}
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </div>
                     </div>
-                  )}
-                  {order.status === 'in_progress' && (
-                    <button className="px-4 py-1.5 rounded-lg bg-success text-success-foreground text-xs font-bold hover:brightness-95 transition-all">
-                      {lang === 'ar' ? 'تم التسليم' : 'Mark Done'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
+                  </button>
+
+                  {/* Expanded details */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 space-y-4 border-t pt-4">
+                          {/* Order details */}
+                          {order.notes && (
+                            <div className="bg-muted/50 rounded-xl p-3">
+                              <p className="text-xs text-muted-foreground mb-1">{lang === 'ar' ? 'ملاحظات' : 'Notes'}</p>
+                              <p className="text-sm">{order.notes}</p>
+                            </div>
+                          )}
+
+                          {/* Items */}
+                          {order.order_items?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground mb-2">
+                                {lang === 'ar' ? 'العناصر' : 'Items'} ({order.order_items.length})
+                              </p>
+                              <div className="space-y-1.5">
+                                {order.order_items.map((item: any) => (
+                                  <div key={item.id} className="flex items-center gap-2 text-sm bg-muted/30 rounded-lg px-3 py-2">
+                                    <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="flex-1 truncate">{item.free_text_description || 'Item'}</span>
+                                    {item.quantity > 1 && <span className="text-xs text-muted-foreground">x{item.quantity}</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Stages with action buttons */}
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground mb-2">
+                              {lang === 'ar' ? 'المراحل' : 'Stages'}
+                            </p>
+                            <div className="space-y-2">
+                              {stages.map((stage: any) => {
+                                const label = stageLabels[stage.stage_type] || { ar: stage.stage_type, en: stage.stage_type };
+                                const isDone = stage.status === 'completed';
+                                const isActive = stage.status === 'in_progress';
+                                const isPending = stage.status === 'pending' || stage.status === 'accepted';
+
+                                return (
+                                  <div key={stage.id} className={cn(
+                                    'rounded-xl border p-3 transition-colors',
+                                    isActive && 'border-primary/50 bg-primary/5',
+                                    isDone && 'border-emerald/30 bg-emerald/5',
+                                  )}>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold',
+                                          isDone ? 'bg-emerald text-white' : isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                                        )}>
+                                          {stage.sequence_no}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">{lang === 'ar' ? label.ar : label.en}</p>
+                                          {stage.address_text && (
+                                            <p className="text-[10px] text-muted-foreground">{stage.address_text}</p>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Action buttons */}
+                                      {isPending && (
+                                        <button
+                                          onClick={() => handleStageAction(stage.id, 'in_progress')}
+                                          disabled={updateStage.isPending}
+                                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:brightness-95 transition-all disabled:opacity-50"
+                                        >
+                                          <Play className="h-3 w-3" />
+                                          {lang === 'ar' ? 'بدء' : 'Start'}
+                                        </button>
+                                      )}
+                                      {isActive && (
+                                        <button
+                                          onClick={() => handleStageAction(stage.id, 'completed')}
+                                          disabled={updateStage.isPending}
+                                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald text-white text-xs font-bold hover:brightness-95 transition-all disabled:opacity-50"
+                                        >
+                                          <CheckCircle className="h-3 w-3" />
+                                          {lang === 'ar' ? 'إتمام' : 'Done'}
+                                        </button>
+                                      )}
+                                      {isDone && (
+                                        <CheckCircle className="h-4 w-4 text-emerald" />
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Escrow card */}
+                          <EscrowStatusCard orderId={order.id} stages={stages} />
+
+                          {/* Chat button */}
+                          <button
+                            onClick={() => setChatOrderId(order.id)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-primary/30 bg-primary/5 text-primary font-bold text-sm hover:bg-primary/10 transition-all"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            {lang === 'ar' ? 'محادثة العميل' : 'Chat with Customer'}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })
           )}
         </div>
       </div>
+
+      {/* Chat overlay */}
+      {chatOrderId && (
+        <OrderChat orderId={chatOrderId} isOpen={!!chatOrderId} onClose={() => setChatOrderId(null)} senderRole="executor" />
+      )}
     </div>
   );
 }

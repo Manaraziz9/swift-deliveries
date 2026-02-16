@@ -21,9 +21,10 @@ interface OrderChatProps {
   orderId: string;
   isOpen: boolean;
   onClose: () => void;
+  senderRole?: 'customer' | 'executor';
 }
 
-export default function OrderChat({ orderId, isOpen, onClose }: OrderChatProps) {
+export default function OrderChat({ orderId, isOpen, onClose, senderRole = 'customer' }: OrderChatProps) {
   const { user } = useAuth();
   const { lang, dir } = useLang();
   const queryClient = useQueryClient();
@@ -85,7 +86,7 @@ export default function OrderChat({ orderId, isOpen, onClose }: OrderChatProps) 
       await supabase.from('chat_messages').insert({
         order_id: orderId,
         sender_id: user.id,
-        sender_role: 'customer',
+        sender_role: senderRole,
         message: msg,
       });
     } catch {

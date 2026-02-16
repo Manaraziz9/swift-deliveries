@@ -87,6 +87,47 @@ serve(async (req) => {
       data: { orderId, stageId, stageType, newStatus, sequenceNo },
     });
 
+    // Auto-release escrow when stage completes
+    if (newStatus === 'completed') {
+      try {
+        const escrowUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/escrow-release`;
+        await fetch(escrowUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            action: 'stage_completed',
+            order_id: orderId,
+            stage_id: stageId,
+          }),
+        });
+      } catch (escrowErr) {
+        console.error('Escrow release error:', escrowErr);
+      }
+    }
+
+    // Auto-refund on stage failure
+    if (newStatus === 'failed') {
+      try {
+        const escrowUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/escrow-release`;
+        await fetch(escrowUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify({
+            action: 'refund',
+            order_id: orderId,
+          }),
+        });
+      } catch (escrowErr) {
+        console.error('Escrow refund error:', escrowErr);
+      }
+    }
+
     // Get push subscriptions
     const { data: subscriptions } = await supabaseClient
       .from('push_subscriptions')

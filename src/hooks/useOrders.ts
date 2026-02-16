@@ -97,6 +97,21 @@ export function useCreateOrder() {
         if (stagesError) throw stagesError;
       }
 
+      // Create escrow hold for the total amount
+      const totals = order.totals_json as any;
+      if (totals?.total && order.status !== 'draft') {
+        await supabase.from('escrow_transactions').insert({
+          order_id: orderData.id,
+          transaction_type: 'hold',
+          amount: totals.total,
+          currency: order.currency || 'SAR',
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          notes: 'Initial escrow hold on payment',
+        });
+        await supabase.from('orders').update({ escrow_status: 'held' }).eq('id', orderData.id);
+      }
+
       return orderData;
     },
     onSuccess: () => {

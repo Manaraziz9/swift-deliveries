@@ -124,6 +124,60 @@ export type Database = {
           },
         ]
       }
+      escrow_transactions: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          notes: string | null
+          order_id: string
+          stage_id: string | null
+          status: string
+          transaction_type: string
+        }
+        Insert: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          stage_id?: string | null
+          status?: string
+          transaction_type?: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          stage_id?: string | null
+          status?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escrow_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escrow_transactions_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "order_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_ratings: {
         Row: {
           comment: string | null
@@ -416,6 +470,7 @@ export type Database = {
           dropoff_address: string | null
           dropoff_lat: number | null
           dropoff_lng: number | null
+          escrow_status: string | null
           id: string
           notes: string | null
           order_type: Database["public"]["Enums"]["order_type"]
@@ -444,6 +499,7 @@ export type Database = {
           dropoff_address?: string | null
           dropoff_lat?: number | null
           dropoff_lng?: number | null
+          escrow_status?: string | null
           id?: string
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]
@@ -472,6 +528,7 @@ export type Database = {
           dropoff_address?: string | null
           dropoff_lat?: number | null
           dropoff_lng?: number | null
+          escrow_status?: string | null
           id?: string
           notes?: string | null
           order_type?: Database["public"]["Enums"]["order_type"]

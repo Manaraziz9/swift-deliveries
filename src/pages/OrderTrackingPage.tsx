@@ -7,6 +7,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import CompletionRatingFlow from '@/components/rating/CompletionRatingFlow';
 import OrderProgressBar from '@/components/order/OrderProgressBar';
 import OrderChat from '@/components/chat/OrderChat';
+import EscrowStatusCard from '@/components/order/EscrowStatusCard';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -226,6 +227,9 @@ export default function OrderTrackingPage() {
         {order.order_stages.length > 0 && (
           <OrderProgressBar stages={order.order_stages} />
         )}
+
+        {/* Escrow Status */}
+        <EscrowStatusCard orderId={order.id} stages={order.order_stages} />
 
         {/* Map */}
         {polylinePositions.length > 0 && (

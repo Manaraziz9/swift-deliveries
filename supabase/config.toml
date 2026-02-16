@@ -2,3 +2,6 @@ project_id = "sioitnofzafijbftgxqp"
 
 [functions.pickup-reminders]
 verify_jwt = false
+
+[functions.notify-stage-change]
+verify_jwt = false

@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
-import RatingModal from '@/components/rating/RatingModal';
+import CompletionRatingFlow from '@/components/rating/CompletionRatingFlow';
 import OrderProgressBar from '@/components/order/OrderProgressBar';
 import OrderChat from '@/components/chat/OrderChat';
 import { useLang } from '@/contexts/LangContext';
@@ -92,7 +92,6 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [merchant, setMerchant] = useState<{ id: string; business_name: string } | null>(null);
   const [showRating, setShowRating] = useState(false);
-  const [ratingTarget, setRatingTarget] = useState<'merchant' | 'executor'>('merchant');
   const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
@@ -154,6 +153,7 @@ export default function OrderTrackingPage() {
     .map(s => [s.lat!, s.lng!] as [number, number]) || [];
 
   const isCompleted = order?.status === 'completed';
+  const allStagesComplete = order?.order_stages?.every(s => s.status === 'completed') ?? false;
   const isActive = order?.status === 'in_progress' || order?.status === 'paid';
   const BackIcon = lang === 'ar' ? ArrowRight : ArrowLeft;
 
@@ -313,54 +313,29 @@ export default function OrderTrackingPage() {
           </button>
         )}
 
-        {/* Rating buttons for completed orders */}
-        {isCompleted && (
-          <div className="bg-card rounded-xl shadow-ya-sm p-4">
-            <h3 className="font-bold mb-3">
-              {lang === 'ar' ? 'قيّم تجربتك' : 'Rate Your Experience'}
-            </h3>
-            <div className="flex flex-col gap-2">
-              {merchant && (
-                <Button
-                  variant="outline"
-                  className="justify-start gap-2"
-                  onClick={() => { setRatingTarget('merchant'); setShowRating(true); }}
-                >
-                  <Star className="h-4 w-4 text-primary" />
-                  {lang === 'ar' ? `قيّم ${merchant.business_name}` : `Rate ${merchant.business_name}`}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                className="justify-start gap-2"
-                onClick={() => { setRatingTarget('executor'); setShowRating(true); }}
-              >
-                <Star className="h-4 w-4 text-primary" />
-                {lang === 'ar' ? 'قيّم المنفذ' : 'Rate Executor'}
-              </Button>
-            </div>
-          </div>
+        {/* Rating prompt - only after ALL stages complete */}
+        {isCompleted && allStagesComplete && (
+          <button
+            onClick={() => setShowRating(true)}
+            className="w-full mb-4 flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-gold text-primary-foreground font-bold text-sm shadow-ya-accent hover:opacity-90 transition-all"
+          >
+            <Star className="h-5 w-5" />
+            {lang === 'ar' ? 'قيّم تجربتك الآن ⭐' : '⭐ Rate Your Experience'}
+          </button>
         )}
       </div>
 
       {/* Chat overlay */}
       <OrderChat orderId={order.id} isOpen={chatOpen} onClose={() => setChatOpen(false)} />
 
-      {/* Rating Modal */}
-      {showRating && (
-        <RatingModal
-          isOpen={showRating}
-          onClose={() => setShowRating(false)}
-          orderId={order.id}
-          entityId={ratingTarget === 'merchant' && merchant ? merchant.id : order.id}
-          entityType={ratingTarget}
-          entityName={
-            ratingTarget === 'merchant' && merchant
-              ? merchant.business_name
-              : lang === 'ar' ? 'المنفذ' : 'Executor'
-          }
-        />
-      )}
+      {/* Completion Rating Flow */}
+      <CompletionRatingFlow
+        isOpen={showRating}
+        onClose={() => setShowRating(false)}
+        orderId={order.id}
+        merchantId={merchant?.id}
+        merchantName={merchant?.business_name}
+      />
 
       <BottomNav />
     </div>

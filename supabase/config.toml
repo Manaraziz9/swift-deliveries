@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.notify-stage-change]
 verify_jwt = false
+
+[functions.escrow-release]
+verify_jwt = false

@@ -5,6 +5,8 @@ import L from 'leaflet';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import RatingModal from '@/components/rating/RatingModal';
+import OrderProgressBar from '@/components/order/OrderProgressBar';
+import OrderChat from '@/components/chat/OrderChat';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +20,7 @@ import {
   Star,
   ArrowRight,
   ArrowLeft,
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -90,6 +93,7 @@ export default function OrderTrackingPage() {
   const [merchant, setMerchant] = useState<{ id: string; business_name: string } | null>(null);
   const [showRating, setShowRating] = useState(false);
   const [ratingTarget, setRatingTarget] = useState<'merchant' | 'executor'>('merchant');
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user && id) {
@@ -98,6 +102,23 @@ export default function OrderTrackingPage() {
       setLoading(false);
     }
   }, [user, authLoading, id]);
+
+  // Realtime stage updates
+  useEffect(() => {
+    if (!id || !user) return;
+    const channel = supabase
+      .channel(`order-stages-${id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'order_stages',
+        filter: `order_id=eq.${id}`,
+      }, () => {
+        fetchOrder();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, user]);
 
   const fetchOrder = async () => {
     const { data, error } = await supabase
@@ -112,7 +133,6 @@ export default function OrderTrackingPage() {
       );
       setOrder({ ...data, order_stages: sortedStages } as OrderData);
 
-      // Fetch merchant if exists
       if (data.source_merchant_id) {
         const { data: merchantData } = await supabase
           .from('merchants')
@@ -127,13 +147,14 @@ export default function OrderTrackingPage() {
 
   const mapCenter: [number, number] = order?.order_stages?.[0]?.lat && order?.order_stages?.[0]?.lng
     ? [order.order_stages[0].lat, order.order_stages[0].lng]
-    : [24.7136, 46.6753]; // Default Riyadh
+    : [24.7136, 46.6753];
 
   const polylinePositions = order?.order_stages
     ?.filter(s => s.lat && s.lng)
     .map(s => [s.lat!, s.lng!] as [number, number]) || [];
 
   const isCompleted = order?.status === 'completed';
+  const isActive = order?.status === 'in_progress' || order?.status === 'paid';
   const BackIcon = lang === 'ar' ? ArrowRight : ArrowLeft;
 
   if (authLoading || loading) {
@@ -178,7 +199,8 @@ export default function OrderTrackingPage() {
           {lang === 'ar' ? 'العودة للطلبات' : 'Back to Orders'}
         </Link>
 
-        <div className="bg-card rounded-xl shadow-card p-4 mb-4">
+        {/* Order header card */}
+        <div className="bg-card rounded-xl shadow-ya-sm p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold">
               {lang === 'ar' ? 'طلب' : 'Order'} #{order.id.slice(0, 8)}
@@ -189,11 +211,7 @@ export default function OrderTrackingPage() {
           </div>
           <p className="text-xs text-muted-foreground">
             {new Date(order.created_at).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
+              year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
             })}
           </p>
           {order.recipient_name && (
@@ -204,9 +222,14 @@ export default function OrderTrackingPage() {
           )}
         </div>
 
+        {/* Horizontal Progress Bar */}
+        {order.order_stages.length > 0 && (
+          <OrderProgressBar stages={order.order_stages} />
+        )}
+
         {/* Map */}
         {polylinePositions.length > 0 && (
-          <div className="rounded-xl overflow-hidden shadow-card mb-4 h-[200px]">
+          <div className="rounded-xl overflow-hidden shadow-ya-sm mb-4 h-[200px]">
             <MapContainer
               center={mapCenter}
               zoom={12}
@@ -214,11 +237,8 @@ export default function OrderTrackingPage() {
               scrollWheelZoom={false}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {order.order_stages.filter(s => s.lat && s.lng).map((stage, idx) => (
-                <Marker
-                  key={stage.id}
-                  position={[stage.lat!, stage.lng!]}
-                />
+              {order.order_stages.filter(s => s.lat && s.lng).map((stage) => (
+                <Marker key={stage.id} position={[stage.lat!, stage.lng!]} />
               ))}
               {polylinePositions.length > 1 && (
                 <Polyline
@@ -232,55 +252,46 @@ export default function OrderTrackingPage() {
           </div>
         )}
 
-        {/* Timeline */}
-        <div className="bg-card rounded-xl shadow-card p-4 mb-4">
+        {/* Vertical Timeline */}
+        <div className="bg-card rounded-xl shadow-ya-sm p-4 mb-4">
           <h3 className="font-bold mb-4">
             {lang === 'ar' ? 'مراحل الطلب' : 'Order Stages'}
           </h3>
           <div className="space-y-4">
             {order.order_stages.map((stage, idx) => {
               const StageIcon = stageIcons[stage.stage_type] || Circle;
-              const isActive = stage.status === 'in_progress';
+              const isStageActive = stage.status === 'in_progress';
               const isDone = stage.status === 'completed';
               const label = stageLabels[stage.stage_type] || { ar: stage.stage_type, en: stage.stage_type };
 
               return (
                 <div key={stage.id} className="flex gap-3 relative">
-                  {/* Connector line */}
                   {idx < order.order_stages.length - 1 && (
                     <div
                       className={cn(
                         'absolute top-8 w-0.5 h-[calc(100%+8px)]',
-                        isDone ? 'bg-emerald' : 'bg-border'
+                        isDone ? 'bg-primary' : 'bg-border'
                       )}
                       style={{ left: lang === 'ar' ? 'auto' : '15px', right: lang === 'ar' ? '15px' : 'auto' }}
                     />
                   )}
-
-                  <div
-                    className={cn(
-                      'relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                      isDone
-                        ? 'bg-emerald text-white'
-                        : isActive
-                        ? 'bg-primary text-primary-foreground animate-pulse'
-                        : 'bg-muted text-muted-foreground'
-                    )}
-                  >
+                  <div className={cn(
+                    'relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+                    isDone ? 'bg-primary text-primary-foreground'
+                      : isStageActive ? 'bg-primary text-primary-foreground animate-pulse'
+                      : 'bg-muted text-muted-foreground'
+                  )}>
                     {isDone ? <CheckCircle className="h-4 w-4" /> : <StageIcon className="h-4 w-4" />}
                   </div>
-
                   <div className="flex-1 pb-4">
                     <p className="font-medium text-sm">{lang === 'ar' ? label.ar : label.en}</p>
                     {stage.address_text && (
                       <p className="text-xs text-muted-foreground mt-0.5">{stage.address_text}</p>
                     )}
                     {stage.completed_at && (
-                      <p className="text-xs text-emerald mt-1">
-                        ✓{' '}
-                        {new Date(stage.completed_at).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
+                      <p className="text-xs text-primary mt-1">
+                        ✓ {new Date(stage.completed_at).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', {
+                          hour: '2-digit', minute: '2-digit',
                         })}
                       </p>
                     )}
@@ -291,9 +302,20 @@ export default function OrderTrackingPage() {
           </div>
         </div>
 
+        {/* Chat button for active orders */}
+        {(isActive || isCompleted) && (
+          <button
+            onClick={() => setChatOpen(true)}
+            className="w-full mb-4 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-primary/30 bg-primary/5 text-primary font-bold text-sm hover:bg-primary/10 transition-all"
+          >
+            <MessageCircle className="h-5 w-5" />
+            {lang === 'ar' ? 'محادثة المندوب' : 'Chat with Provider'}
+          </button>
+        )}
+
         {/* Rating buttons for completed orders */}
         {isCompleted && (
-          <div className="bg-card rounded-xl shadow-card p-4">
+          <div className="bg-card rounded-xl shadow-ya-sm p-4">
             <h3 className="font-bold mb-3">
               {lang === 'ar' ? 'قيّم تجربتك' : 'Rate Your Experience'}
             </h3>
@@ -302,10 +324,7 @@ export default function OrderTrackingPage() {
                 <Button
                   variant="outline"
                   className="justify-start gap-2"
-                  onClick={() => {
-                    setRatingTarget('merchant');
-                    setShowRating(true);
-                  }}
+                  onClick={() => { setRatingTarget('merchant'); setShowRating(true); }}
                 >
                   <Star className="h-4 w-4 text-primary" />
                   {lang === 'ar' ? `قيّم ${merchant.business_name}` : `Rate ${merchant.business_name}`}
@@ -314,10 +333,7 @@ export default function OrderTrackingPage() {
               <Button
                 variant="outline"
                 className="justify-start gap-2"
-                onClick={() => {
-                  setRatingTarget('executor');
-                  setShowRating(true);
-                }}
+                onClick={() => { setRatingTarget('executor'); setShowRating(true); }}
               >
                 <Star className="h-4 w-4 text-primary" />
                 {lang === 'ar' ? 'قيّم المنفذ' : 'Rate Executor'}
@@ -326,6 +342,9 @@ export default function OrderTrackingPage() {
           </div>
         )}
       </div>
+
+      {/* Chat overlay */}
+      <OrderChat orderId={order.id} isOpen={chatOpen} onClose={() => setChatOpen(false)} />
 
       {/* Rating Modal */}
       {showRating && (
@@ -338,9 +357,7 @@ export default function OrderTrackingPage() {
           entityName={
             ratingTarget === 'merchant' && merchant
               ? merchant.business_name
-              : lang === 'ar'
-              ? 'المنفذ'
-              : 'Executor'
+              : lang === 'ar' ? 'المنفذ' : 'Executor'
           }
         />
       )}

@@ -1,1 +1,4 @@
 project_id = "sioitnofzafijbftgxqp"
+
+[functions.pickup-reminders]
+verify_jwt = false

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProviderOrders, useUpdateStageStatus } from '@/hooks/useProviderOrders';
 import OrderChat from '@/components/chat/OrderChat';
 import EscrowStatusCard from '@/components/order/EscrowStatusCard';
+import ProviderRouteMap from '@/components/map/ProviderRouteMap';
 import {
   Package, ClipboardList, Star, ArrowLeft, ArrowRight,
   Loader2, LogIn, TrendingUp, CheckCircle, Clock,
@@ -296,6 +297,20 @@ export default function ProviderDashboard() {
                                 );
                               })}
                             </div>
+                          </div>
+
+                          {/* Route Map */}
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground mb-2">
+                              {lang === 'ar' ? 'خريطة المسار' : 'Route Map'}
+                            </p>
+                            <ProviderRouteMap
+                              stages={stages}
+                              pickupLat={order.pickup_lat}
+                              pickupLng={order.pickup_lng}
+                              dropoffLat={order.dropoff_lat}
+                              dropoffLng={order.dropoff_lng}
+                            />
                           </div>
 
                           {/* Escrow card */}

@@ -25,11 +25,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { orderId, stageId, stageType, newStatus, sequenceNo } = await req.json();
+    const { orderId, stageId, stageType, newStatus, sequenceNo, action } = await req.json();
 
-    if (!orderId || !stageId || !newStatus) {
+    if (!orderId || (!stageId && !action) || (!newStatus && !action)) {
       return new Response(
-        JSON.stringify({ error: 'orderId, stageId, and newStatus are required' }),
+        JSON.stringify({ error: 'orderId and (stageId + newStatus) or action are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -56,12 +56,24 @@ serve(async (req) => {
       .single();
 
     const lang = profile?.language === 'ar' ? 'ar' : 'en';
-    const label = stageLabels[stageType] || { ar: stageType, en: stageType };
+    const effectiveStageType = stageType || 'pickup';
+    const label = stageLabels[effectiveStageType] || { ar: effectiveStageType, en: effectiveStageType };
 
     let title: string;
     let body: string;
 
-    if (newStatus === 'in_progress') {
+    // Handle order-level accept/reject
+    if (action === 'order_accepted') {
+      title = lang === 'ar' ? '✅ تم قبول طلبك' : '✅ Order Accepted';
+      body = lang === 'ar'
+        ? 'المندوب قبل طلبك وسيبدأ التنفيذ قريباً'
+        : 'The provider accepted your order and will start working on it soon';
+    } else if (action === 'order_rejected') {
+      title = lang === 'ar' ? '❌ تم رفض طلبك' : '❌ Order Rejected';
+      body = lang === 'ar'
+        ? 'للأسف، المندوب رفض طلبك. يمكنك إعادة المحاولة مع مندوب آخر.'
+        : 'Unfortunately, the provider declined your order. You can try with another provider.';
+    } else if (newStatus === 'in_progress') {
       title = lang === 'ar' ? `🚀 بدأت مرحلة ${label.ar}` : `🚀 ${label.en} Stage Started`;
       body = lang === 'ar'
         ? `المندوب بدأ مرحلة "${label.ar}" في طلبك (الخطوة ${sequenceNo || ''})`
@@ -79,12 +91,13 @@ serve(async (req) => {
     }
 
     // Create in-app notification
+    const notificationType = action === 'order_accepted' || action === 'order_rejected' ? 'order_decision' : 'stage_update';
     await supabaseClient.from('notifications').insert({
       user_id: order.customer_id,
       title,
       body,
-      type: 'stage_update',
-      data: { orderId, stageId, stageType, newStatus, sequenceNo },
+      type: notificationType,
+      data: { orderId, stageId, stageType, newStatus, sequenceNo, action },
     });
 
     // Auto-release escrow when stage completes

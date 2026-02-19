@@ -9,7 +9,6 @@ export function useProviderOrders() {
     queryKey: ['provider-orders', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      // Get all stages assigned to this executor
       const { data: stages, error: stagesError } = await supabase
         .from('order_stages')
         .select('order_id')
@@ -50,7 +49,6 @@ export function useUpdateStageStatus() {
 
       if (error) throw error;
 
-      // If stage completed, check if all stages done → update order status
       if (status === 'completed' && data) {
         const { data: allStages } = await supabase
           .from('order_stages')
@@ -66,6 +64,54 @@ export function useUpdateStageStatus() {
       }
 
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['provider-orders'] });
+    },
+  });
+}
+
+export function useAcceptRejectOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ orderId, accept }: { orderId: string; accept: boolean }) => {
+      if (accept) {
+        // Accept: update all pending stages to 'accepted', order to 'in_progress'
+        const { data: stages } = await supabase
+          .from('order_stages')
+          .select('id, status')
+          .eq('order_id', orderId);
+
+        const pendingStages = stages?.filter(s => s.status === 'pending') || [];
+        for (const s of pendingStages) {
+          await supabase.from('order_stages').update({ status: 'accepted' }).eq('id', s.id);
+        }
+
+        await supabase.from('orders').update({ status: 'in_progress' }).eq('id', orderId);
+      } else {
+        // Reject: update all stages to 'failed', order to 'canceled'
+        const { data: stages } = await supabase
+          .from('order_stages')
+          .select('id')
+          .eq('order_id', orderId);
+
+        for (const s of (stages || [])) {
+          await supabase.from('order_stages').update({ status: 'failed' }).eq('id', s.id);
+        }
+
+        await supabase.from('orders').update({ status: 'canceled' }).eq('id', orderId);
+      }
+
+      // Notify customer via edge function
+      await supabase.functions.invoke('notify-stage-change', {
+        body: {
+          orderId,
+          action: accept ? 'order_accepted' : 'order_rejected',
+        },
+      });
+
+      return { orderId, accept };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provider-orders'] });

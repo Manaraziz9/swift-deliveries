@@ -7,8 +7,9 @@ import BottomNav from '@/components/layout/BottomNav';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ListOrdered, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ListOrdered, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ORDER_STATUS_LABELS } from '@/lib/orderConstants';
 
 interface Order {
   id: string;
@@ -42,14 +43,7 @@ export default function OrdersPage() {
     }
   }, [user, authLoading]);
 
-  const statusLabels: Record<string, { ar: string; en: string; icon: any; color: string }> = {
-    draft: { ar: 'مسودة', en: 'Draft', icon: Clock, color: 'text-muted-foreground' },
-    payment_pending: { ar: 'بانتظار الدفع', en: 'Payment Pending', icon: Clock, color: 'text-primary' },
-    paid: { ar: 'مدفوع', en: 'Paid', icon: Clock, color: 'text-primary' },
-    in_progress: { ar: 'قيد التنفيذ', en: 'In Progress', icon: Clock, color: 'text-success' },
-    completed: { ar: 'مكتمل', en: 'Completed', icon: CheckCircle, color: 'text-success' },
-    canceled: { ar: 'ملغي', en: 'Canceled', icon: XCircle, color: 'text-destructive' },
-  };
+  const statusLabels = ORDER_STATUS_LABELS;
 
   if (authLoading || loading) {
     return (

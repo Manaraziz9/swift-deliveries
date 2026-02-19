@@ -17,13 +17,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
-const stageLabels: Record<string, { ar: string; en: string }> = {
-  purchase: { ar: 'الشراء', en: 'Purchase' },
-  pickup: { ar: 'الاستلام', en: 'Pickup' },
-  dropoff: { ar: 'التوصيل', en: 'Delivery' },
-  handover: { ar: 'التسليم', en: 'Handover' },
-  onsite: { ar: 'في الموقع', en: 'On-site' },
-};
+import { STAGE_LABELS } from '@/lib/orderConstants';
+const stageLabels = STAGE_LABELS;
 
 export default function ProviderDashboard() {
   const { lang, dir } = useLang();
@@ -131,23 +126,66 @@ export default function ProviderDashboard() {
 
       <div className="container py-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-2xl bg-card border p-3 text-center">
-            <ClipboardList className="h-4 w-4 mx-auto mb-1 text-primary" />
-            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'نشطة' : 'Active'}</p>
-            <p className="text-xl font-bold">{activeCount}</p>
-          </div>
-          <div className="rounded-2xl bg-card border p-3 text-center">
-            <CheckCircle className="h-4 w-4 mx-auto mb-1 text-emerald" />
-            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'مكتمل' : 'Done'}</p>
-            <p className="text-xl font-bold">{completedCount}</p>
-          </div>
-          <div className="rounded-2xl bg-card border p-3 text-center">
-            <TrendingUp className="h-4 w-4 mx-auto mb-1 text-primary" />
-            <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
-            <p className="text-xl font-bold">{orders.length}</p>
-          </div>
-        </div>
+        {/* Stats with Earnings */}
+        {(() => {
+          const totalEarnings = orders
+            .filter((o: any) => o.status === 'completed')
+            .reduce((sum: number, o: any) => sum + (o.totals_json?.total || 0), 0);
+          const now = new Date();
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const weekStart = new Date(todayStart);
+          weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+          const todayEarnings = orders
+            .filter((o: any) => o.status === 'completed' && new Date(o.created_at) >= todayStart)
+            .reduce((sum: number, o: any) => sum + (o.totals_json?.total || 0), 0);
+          const weekEarnings = orders
+            .filter((o: any) => o.status === 'completed' && new Date(o.created_at) >= weekStart)
+            .reduce((sum: number, o: any) => sum + (o.totals_json?.total || 0), 0);
+
+          return (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-card border p-3 text-center">
+                  <ClipboardList className="h-4 w-4 mx-auto mb-1 text-primary" />
+                  <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'نشطة' : 'Active'}</p>
+                  <p className="text-xl font-bold">{activeCount}</p>
+                </div>
+                <div className="rounded-2xl bg-card border p-3 text-center">
+                  <CheckCircle className="h-4 w-4 mx-auto mb-1 text-emerald" />
+                  <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'مكتمل' : 'Done'}</p>
+                  <p className="text-xl font-bold">{completedCount}</p>
+                </div>
+                <div className="rounded-2xl bg-card border p-3 text-center">
+                  <TrendingUp className="h-4 w-4 mx-auto mb-1 text-primary" />
+                  <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
+                  <p className="text-xl font-bold">{orders.length}</p>
+                </div>
+              </div>
+
+              {/* Earnings Strip */}
+              <div className="rounded-2xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-4">
+                <p className="text-xs font-bold text-primary mb-3">{lang === 'ar' ? '💰 الأرباح' : '💰 Earnings'}</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'اليوم' : 'Today'}</p>
+                    <p className="text-lg font-bold text-foreground">{todayEarnings.toFixed(0)}</p>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'ر.س' : 'SAR'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'الأسبوع' : 'Week'}</p>
+                    <p className="text-lg font-bold text-foreground">{weekEarnings.toFixed(0)}</p>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'ر.س' : 'SAR'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'الإجمالي' : 'Total'}</p>
+                    <p className="text-lg font-bold text-foreground">{totalEarnings.toFixed(0)}</p>
+                    <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'ر.س' : 'SAR'}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Tabs */}
         <div className="flex rounded-xl border bg-card overflow-hidden">

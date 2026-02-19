@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProviderOrders, useUpdateStageStatus } from '@/hooks/useProviderOrders';
+import { useProviderOrders, useUpdateStageStatus, useAcceptRejectOrder } from '@/hooks/useProviderOrders';
 import OrderChat from '@/components/chat/OrderChat';
 import EscrowStatusCard from '@/components/order/EscrowStatusCard';
 import ProviderRouteMap from '@/components/map/ProviderRouteMap';
@@ -10,6 +10,7 @@ import {
   Package, ClipboardList, Star, ArrowLeft, ArrowRight,
   Loader2, LogIn, TrendingUp, CheckCircle, Clock,
   AlertCircle, MessageCircle, Play, ChevronDown, ChevronUp,
+  ThumbsUp, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -32,6 +33,7 @@ export default function ProviderDashboard() {
 
   const { data: orders = [], isLoading } = useProviderOrders();
   const updateStage = useUpdateStageStatus();
+  const acceptReject = useAcceptRejectOrder();
 
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -71,6 +73,21 @@ export default function ProviderDashboard() {
       },
       onError: () => {
         toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error updating status');
+      },
+    });
+  };
+
+  const handleOrderDecision = (orderId: string, accept: boolean) => {
+    acceptReject.mutate({ orderId, accept }, {
+      onSuccess: () => {
+        toast.success(
+          accept
+            ? (lang === 'ar' ? 'تم قبول الطلب ✅' : 'Order accepted ✅')
+            : (lang === 'ar' ? 'تم رفض الطلب' : 'Order rejected')
+        );
+      },
+      onError: () => {
+        toast.error(lang === 'ar' ? 'حدث خطأ' : 'Error processing decision');
       },
     });
   };
@@ -196,6 +213,28 @@ export default function ProviderDashboard() {
                       </div>
                     </div>
                   </button>
+
+                  {/* Accept/Reject strip for new orders */}
+                  {(order.status === 'paid' || order.status === 'payment_pending') && (
+                    <div className="px-4 pb-3 flex gap-2">
+                      <button
+                        onClick={() => handleOrderDecision(order.id, true)}
+                        disabled={acceptReject.isPending}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:brightness-95 transition-all disabled:opacity-50"
+                      >
+                        <ThumbsUp className="h-4 w-4" />
+                        {lang === 'ar' ? 'قبول الطلب' : 'Accept Order'}
+                      </button>
+                      <button
+                        onClick={() => handleOrderDecision(order.id, false)}
+                        disabled={acceptReject.isPending}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:brightness-95 transition-all disabled:opacity-50"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        {lang === 'ar' ? 'رفض الطلب' : 'Reject Order'}
+                      </button>
+                    </div>
+                  )}
 
                   {/* Expanded details */}
                   <AnimatePresence>

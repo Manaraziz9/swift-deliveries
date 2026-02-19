@@ -69,13 +69,8 @@ const stageIcons: Record<string, any> = {
   onsite: MapPin,
 };
 
-const stageLabels: Record<string, { ar: string; en: string }> = {
-  purchase: { ar: 'الشراء', en: 'Purchase' },
-  pickup: { ar: 'الاستلام', en: 'Pickup' },
-  dropoff: { ar: 'التوصيل', en: 'Delivery' },
-  handover: { ar: 'التسليم', en: 'Handover' },
-  onsite: { ar: 'في الموقع', en: 'On-site' },
-};
+import { STAGE_LABELS } from '@/lib/orderConstants';
+const stageLabels = STAGE_LABELS;
 
 const statusColors: Record<string, string> = {
   pending: 'bg-muted text-muted-foreground',

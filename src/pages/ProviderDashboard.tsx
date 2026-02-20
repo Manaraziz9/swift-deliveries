@@ -16,6 +16,11 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 import { STAGE_LABELS } from '@/lib/orderConstants';
 const stageLabels = STAGE_LABELS;
@@ -33,6 +38,8 @@ export default function ProviderDashboard() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+  const [rejectOrderId, setRejectOrderId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   if (authLoading || isLoading) {
     return (
@@ -264,7 +271,7 @@ export default function ProviderDashboard() {
                         {lang === 'ar' ? 'قبول الطلب' : 'Accept Order'}
                       </button>
                       <button
-                        onClick={() => handleOrderDecision(order.id, false)}
+                        onClick={() => { setRejectOrderId(order.id); setRejectReason(''); }}
                         disabled={acceptReject.isPending}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:brightness-95 transition-all disabled:opacity-50"
                       >
@@ -416,6 +423,40 @@ export default function ProviderDashboard() {
       {chatOrderId && (
         <OrderChat orderId={chatOrderId} isOpen={!!chatOrderId} onClose={() => setChatOrderId(null)} senderRole="executor" />
       )}
+
+      {/* Reject Confirmation Dialog */}
+      <AlertDialog open={!!rejectOrderId} onOpenChange={(open) => { if (!open) setRejectOrderId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{lang === 'ar' ? 'تأكيد رفض الطلب' : 'Confirm Rejection'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lang === 'ar'
+                ? 'هل أنت متأكد من رفض هذا الطلب؟ يمكنك كتابة سبب الرفض (اختياري).'
+                : 'Are you sure you want to reject this order? You can optionally provide a reason.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            placeholder={lang === 'ar' ? 'سبب الرفض (اختياري)...' : 'Rejection reason (optional)...'}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="min-h-[80px]"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (rejectOrderId) {
+                  handleOrderDecision(rejectOrderId, false);
+                  setRejectOrderId(null);
+                }
+              }}
+            >
+              {lang === 'ar' ? 'تأكيد الرفض' : 'Confirm Reject'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

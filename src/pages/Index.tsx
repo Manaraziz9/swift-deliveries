@@ -4,6 +4,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import HeroSection from '@/components/home/HeroSection';
 import LastOrderStrip from '@/components/home/LastOrderStrip';
 import AwaitingPickupStrip from '@/components/home/AwaitingPickupStrip';
+import YourUsualStrip from '@/components/home/YourUsualStrip';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const NearYouSection = lazy(() => import('@/components/home/NearYouSection'));
@@ -32,6 +33,7 @@ export default function Index() {
         <HeroSection />
         <AwaitingPickupStrip />
         <LastOrderStrip />
+        <YourUsualStrip />
         <Suspense fallback={<SectionSkeleton />}>
           <NearYouSection />
         </Suspense>

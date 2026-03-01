@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Send, Bot, User, Sparkles,
   Package, Loader2, CheckCircle2, Mic, MicOff, ImagePlus, X, Camera,
-  Brain, History,
+  Brain, History, RefreshCw, QrCode, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreateOrder } from '@/hooks/useOrders';
@@ -94,6 +94,7 @@ export default function AIOrderChat() {
   const [savedPrefs, setSavedPrefs] = useState<SavedPreference[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [invoiceDetected, setInvoiceDetected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -283,12 +284,17 @@ export default function AIOrderChat() {
             const content = delta?.content;
             if (content) {
               assistantText += content;
+              // Detect invoice/receipt parsing
+              if (assistantText.includes('[INVOICE_DETECTED]') || assistantText.includes('فاتورة') || assistantText.includes('بطاقة سعر') || assistantText.includes('قائمة مشتريات')) {
+                setInvoiceDetected(true);
+              }
+              const displayText = assistantText.replace('[INVOICE_DETECTED]', '');
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.role === 'assistant' && prev.length > 1 && prev[prev.length - 2]?.role === 'user') {
-                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantText } : m);
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: displayText } : m);
                 }
-                return [...prev, { role: 'assistant', content: assistantText }];
+                return [...prev, { role: 'assistant', content: displayText }];
               });
             }
           } catch { /* partial */ }
@@ -412,6 +418,7 @@ export default function AIOrderChat() {
     setActiveConvId(null);
     setMessages([buildWelcome()]);
     setExtracted(null);
+    setInvoiceDetected(false);
     setHistoryOpen(false);
   };
 
@@ -572,6 +579,31 @@ export default function AIOrderChat() {
               {isCreating ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                 <><Package className="h-5 w-5" />{lang === 'ar' ? 'أرسل الطلب' : 'Submit Order'}</>
               )}
+            </button>
+          </motion.div>
+        )}
+
+        {/* Invoice reorder button */}
+        {invoiceDetected && !extracted?.is_complete && !isLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card border-2 border-dashed border-primary/30 rounded-2xl p-4 space-y-3"
+          >
+            <div className="flex items-center gap-2 text-sm font-bold">
+              <Receipt className="h-5 w-5 text-primary" />
+              {lang === 'ar' ? 'تم التعرف على فاتورة / قائمة أسعار' : 'Invoice / Price List Detected'}
+            </div>
+            <button
+              onClick={() => {
+                haptic('medium');
+                const reorderText = lang === 'ar' ? 'أعد طلب نفس الأشياء من الفاتورة' : 'Reorder the same items from the invoice';
+                setInput(reorderText);
+              }}
+              className="w-full min-h-[44px] py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {lang === 'ar' ? 'أعد طلب نفس الأشياء' : 'Reorder Same Items'}
             </button>
           </motion.div>
         )}

@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.escrow-release]
 verify_jwt = false
+
+[functions.smart-order-ai]
+verify_jwt = false

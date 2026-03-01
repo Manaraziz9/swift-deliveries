@@ -7,32 +7,35 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   onSelect: (template: ServiceTemplate) => void;
+  embedded?: boolean;
 }
 
-export default function ServiceTemplateSelector({ onSelect }: Props) {
+export default function ServiceTemplateSelector({ onSelect, embedded }: Props) {
   const { lang, dir } = useLang();
   const navigate = useNavigate();
   const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-lg border-b border-border">
-        <div className="container py-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 -ms-2 text-muted-foreground hover:text-foreground">
-            <BackArrow className="h-5 w-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="font-bold text-lg">
-              {lang === 'ar' ? 'اختر نوع الخدمة' : 'Choose Service Type'}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {lang === 'ar' ? 'نموذج ذكي يتكيّف مع احتياجك' : 'Smart form adapts to your needs'}
-            </p>
+    <div className={embedded ? "" : "min-h-screen bg-background"}>
+      {/* Header - only show when not embedded */}
+      {!embedded && (
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-lg border-b border-border">
+          <div className="container py-3 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="p-2 -ms-2 text-muted-foreground hover:text-foreground">
+              <BackArrow className="h-5 w-5" />
+            </button>
+            <div className="flex-1">
+              <h1 className="font-bold text-lg">
+                {lang === 'ar' ? 'اختر نوع الخدمة' : 'Choose Service Type'}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {lang === 'ar' ? 'نموذج ذكي يتكيّف مع احتياجك' : 'Smart form adapts to your needs'}
+              </p>
+            </div>
+            <span className="text-lg font-bold font-en text-primary">YA</span>
           </div>
-          <span className="text-lg font-bold font-en text-primary">YA</span>
         </div>
-      </div>
+      )}
 
       <div className="container py-5 space-y-4">
         {/* Smart hint */}

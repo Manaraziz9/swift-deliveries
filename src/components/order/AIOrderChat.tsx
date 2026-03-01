@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Send, Bot, User, Sparkles,
   Package, Loader2, CheckCircle2, Mic, MicOff, ImagePlus, X,
-  Brain,
+  Brain, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreateOrder } from '@/hooks/useOrders';
@@ -14,6 +14,21 @@ import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import {
+  useCreateAIConversation,
+  useUpdateAIConversation,
+  useSaveAIChatMessage,
+  useAIConversationMessages,
+  type AIConversation,
+} from '@/hooks/useAIConversations';
+import AIConversationHistory from './AIConversationHistory';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -46,13 +61,11 @@ interface SavedPreference {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-order-ai`;
 
-// Helper to get text content from message
 function getTextContent(content: string | MessageContent[]): string {
   if (typeof content === 'string') return content;
   return content.filter(c => c.type === 'text').map(c => c.text || '').join('');
 }
 
-// Helper to get image URLs from message
 function getImageUrls(content: string | MessageContent[]): string[] {
   if (typeof content === 'string') return [];
   return content.filter(c => c.type === 'image_url').map(c => c.image_url?.url || '').filter(Boolean);
@@ -72,9 +85,16 @@ export default function AIOrderChat() {
   const [isCreating, setIsCreating] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [savedPrefs, setSavedPrefs] = useState<SavedPreference[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const createConv = useCreateAIConversation();
+  const updateConv = useUpdateAIConversation();
+  const saveMsg = useSaveAIChatMessage();
+  const { data: loadedMessages } = useAIConversationMessages(activeConvId);
 
   const voice = useVoiceInput({
     lang,
@@ -86,35 +106,47 @@ export default function AIOrderChat() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Send welcome message
-  useEffect(() => {
-    const welcome: Message = {
-      role: 'assistant',
-      content: lang === 'ar'
-        ? 'أهلاً! 👋 أنا مساعدك الذكي في **YA**. قولي وش تبي وأنا أرتّب لك كل شي.\n\n📸 تقدر ترسل لي **صورة** وأفهم منها المطلوب\n🎤 أو تكلّم بصوتك\n⌨️ أو اكتب طلبك\n\nمثلاً:\n- "أبي أفصّل عباية حرير سوداء"\n- "سيارتي فيها مشكلة في المكيف"\n- ارسل صورة تصميم وقول "أبي زي كذا"'
-        : "Hi! 👋 I'm your smart assistant at **YA**.\n\n📸 Send me a **photo** and I'll understand what you need\n🎤 Or speak\n⌨️ Or type\n\nFor example:\n- \"I need a black silk abaya tailored\"\n- \"My car AC isn't working\"\n- Send a design photo and say \"I want this\"",
-    };
-    setMessages([welcome]);
-  }, [lang]);
+  // Build welcome message
+  const buildWelcome = useCallback((): Message => ({
+    role: 'assistant',
+    content: lang === 'ar'
+      ? 'أهلاً! 👋 أنا مساعدك الذكي في **YA**. قولي وش تبي وأنا أرتّب لك كل شي.\n\n📸 تقدر ترسل لي **صورة** وأفهم منها المطلوب\n🎤 أو تكلّم بصوتك\n⌨️ أو اكتب طلبك\n\nمثلاً:\n- "أبي أفصّل عباية حرير سوداء"\n- "سيارتي فيها مشكلة في المكيف"\n- ارسل صورة تصميم وقول "أبي زي كذا"'
+      : "Hi! 👋 I'm your smart assistant at **YA**.\n\n📸 Send me a **photo** and I'll understand what you need\n🎤 Or speak\n⌨️ Or type\n\nFor example:\n- \"I need a black silk abaya tailored\"\n- \"My car AC isn't working\"\n- Send a design photo and say \"I want this\"",
+  }), [lang]);
 
-  // Handle image selection
+  // Send welcome on mount
+  useEffect(() => {
+    if (!activeConvId) {
+      setMessages([buildWelcome()]);
+    }
+  }, [lang, activeConvId, buildWelcome]);
+
+  // Load conversation messages when switching
+  useEffect(() => {
+    if (loadedMessages && loadedMessages.length > 0 && activeConvId) {
+      const restored: Message[] = [buildWelcome()];
+      for (const m of loadedMessages) {
+        restored.push({ role: m.role as 'user' | 'assistant', content: m.content as any });
+      }
+      setMessages(restored);
+      setExtracted(null);
+    }
+  }, [loadedMessages, activeConvId, buildWelcome]);
+
   const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
-    for (const file of files.slice(0, 3)) { // Max 3 images
+    for (const file of files.slice(0, 3)) {
       if (file.size > 5 * 1024 * 1024) {
         toast.error(lang === 'ar' ? 'الصورة كبيرة جداً (الحد 5MB)' : 'Image too large (max 5MB)');
         continue;
       }
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result as string;
-        setPendingImages(prev => [...prev, base64]);
+        setPendingImages(prev => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
     }
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [lang]);
 
@@ -122,7 +154,6 @@ export default function AIOrderChat() {
     setPendingImages(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Save preference to DB
   const savePreference = useCallback(async (pref: SavedPreference) => {
     if (!user) return;
     try {
@@ -137,18 +168,9 @@ export default function AIOrderChat() {
       const updatedPrefs = { ...currentPrefs, [pref.key]: pref.value };
 
       if (existing) {
-        await supabase
-          .from('user_preferences')
-          .update({ preferences_json: updatedPrefs })
-          .eq('id', existing.id);
+        await supabase.from('user_preferences').update({ preferences_json: updatedPrefs }).eq('id', existing.id);
       } else {
-        await supabase
-          .from('user_preferences')
-          .insert({
-            user_id: user.id,
-            category: pref.category,
-            preferences_json: updatedPrefs,
-          });
+        await supabase.from('user_preferences').insert({ user_id: user.id, category: pref.category, preferences_json: updatedPrefs });
       }
       setSavedPrefs(prev => [...prev, pref]);
     } catch (e) {
@@ -156,16 +178,25 @@ export default function AIOrderChat() {
     }
   }, [user]);
 
+  // Ensure conversation exists, create if not
+  const ensureConversation = useCallback(async (firstMessageText?: string): Promise<string> => {
+    if (activeConvId) return activeConvId;
+    const title = firstMessageText
+      ? (firstMessageText.length > 40 ? firstMessageText.slice(0, 40) + '…' : firstMessageText)
+      : undefined;
+    const conv = await createConv.mutateAsync({ title });
+    setActiveConvId(conv.id);
+    return conv.id;
+  }, [activeConvId, createConv]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if ((!text && pendingImages.length === 0) || isLoading) return;
 
-    // Build message content
     let userContent: string | MessageContent[];
     if (pendingImages.length > 0) {
       const parts: MessageContent[] = [];
-      if (text) parts.push({ type: 'text', text });
-      else parts.push({ type: 'text', text: lang === 'ar' ? 'شوف هالصورة وقولي رأيك' : 'Check this image' });
+      parts.push({ type: 'text', text: text || (lang === 'ar' ? 'شوف هالصورة وقولي رأيك' : 'Check this image') });
       for (const img of pendingImages) {
         parts.push({ type: 'image_url', image_url: { url: img } });
       }
@@ -180,6 +211,10 @@ export default function AIOrderChat() {
     setInput('');
     setPendingImages([]);
     setIsLoading(true);
+
+    // Persist conversation + user message
+    const convId = await ensureConversation(text || (lang === 'ar' ? 'صورة' : 'Image'));
+    saveMsg.mutate({ conversation_id: convId, role: 'user', content: userContent });
 
     let assistantText = '';
 
@@ -198,21 +233,12 @@ export default function AIOrderChat() {
       });
 
       if (!resp.ok) {
-        if (resp.status === 429) {
-          toast.error(lang === 'ar' ? 'كثرت الطلبات، جرّب بعد شوي' : 'Too many requests, try again later');
-          setIsLoading(false);
-          return;
-        }
-        if (resp.status === 402) {
-          toast.error(lang === 'ar' ? 'يحتاج تعبئة رصيد' : 'Credits needed');
-          setIsLoading(false);
-          return;
-        }
+        if (resp.status === 429) { toast.error(lang === 'ar' ? 'كثرت الطلبات، جرّب بعد شوي' : 'Too many requests'); setIsLoading(false); return; }
+        if (resp.status === 402) { toast.error(lang === 'ar' ? 'يحتاج تعبئة رصيد' : 'Credits needed'); setIsLoading(false); return; }
         throw new Error('Failed');
       }
 
       if (!resp.body) throw new Error('No body');
-
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -237,16 +263,10 @@ export default function AIOrderChat() {
             const parsed = JSON.parse(json);
             const delta = parsed.choices?.[0]?.delta;
 
-            // Handle tool calls
             if (delta?.tool_calls) {
               for (const tc of delta.tool_calls) {
-                if (tc.function?.name) {
-                  currentToolName = tc.function.name;
-                  if (!toolCallArgs[currentToolName]) toolCallArgs[currentToolName] = '';
-                }
-                if (tc.function?.arguments) {
-                  toolCallArgs[currentToolName] += tc.function.arguments;
-                }
+                if (tc.function?.name) { currentToolName = tc.function.name; if (!toolCallArgs[currentToolName]) toolCallArgs[currentToolName] = ''; }
+                if (tc.function?.arguments) toolCallArgs[currentToolName] += tc.function.arguments;
               }
               continue;
             }
@@ -267,12 +287,14 @@ export default function AIOrderChat() {
       }
 
       // Handle tool calls
+      let extractedTitle: string | undefined;
       for (const [toolName, args] of Object.entries(toolCallArgs)) {
         if (!args) continue;
         try {
           if (toolName === 'extract_order_details') {
             const extractedData = JSON.parse(args) as ExtractedOrder;
             setExtracted(extractedData);
+            extractedTitle = extractedData.template_id;
 
             const priceText = extractedData.estimated_price_low && extractedData.estimated_price_high
               ? `\n\n💰 ${lang === 'ar' ? 'التقدير:' : 'Estimate:'} ${extractedData.estimated_price_low}-${extractedData.estimated_price_high} ${lang === 'ar' ? 'ر.س' : 'SAR'}`
@@ -287,29 +309,36 @@ export default function AIOrderChat() {
                 : `📝 Got it: **${extractedData.summary_ar}**${priceText}\n\nStill need: ${extractedData.missing_fields?.join(', ')}`);
 
             if (!assistantText) {
+              assistantText = summaryMsg;
               setMessages(prev => [...prev, { role: 'assistant', content: summaryMsg }]);
             }
+
+            // Update conversation with extracted data
+            updateConv.mutate({ id: convId, extracted_order_json: extractedData, template_id: extractedData.template_id });
           } else if (toolName === 'save_user_preference') {
             const pref = JSON.parse(args) as SavedPreference;
             await savePreference(pref);
-            // Show subtle indicator
-            toast.success(
-              lang === 'ar'
-                ? `🧠 حفظت: ${pref.label_ar || pref.key} = ${pref.value}`
-                : `🧠 Saved: ${pref.key} = ${pref.value}`,
-              { duration: 2000 }
-            );
+            toast.success(lang === 'ar' ? `🧠 حفظت: ${pref.label_ar || pref.key} = ${pref.value}` : `🧠 Saved: ${pref.key} = ${pref.value}`, { duration: 2000 });
           }
         } catch (e) {
           console.error('Failed to parse tool call:', toolName, e);
         }
       }
 
+      // Save assistant message
+      if (assistantText) {
+        saveMsg.mutate({ conversation_id: convId, role: 'assistant', content: assistantText });
+      }
+
+      // Update conversation title if we got extraction
+      if (extractedTitle && !activeConvId) {
+        // title already set
+      }
+
       if (!assistantText && Object.keys(toolCallArgs).length === 0) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: lang === 'ar' ? 'عذراً، ما فهمت. ممكن توضح أكثر؟' : 'Sorry, I didn\'t understand. Can you clarify?'
-        }]);
+        const fallback = lang === 'ar' ? 'عذراً، ما فهمت. ممكن توضح أكثر؟' : 'Sorry, I didn\'t understand. Can you clarify?';
+        setMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
+        saveMsg.mutate({ conversation_id: convId, role: 'assistant', content: fallback });
       }
     } catch (e) {
       console.error(e);
@@ -349,6 +378,12 @@ export default function AIOrderChat() {
           photo_urls: [],
         }],
       });
+
+      // Link order to conversation
+      if (activeConvId) {
+        updateConv.mutate({ id: activeConvId, status: 'completed', order_id: result.id });
+      }
+
       toast.success(lang === 'ar' ? 'تم إنشاء الطلب!' : 'Order created!');
       navigate(`/orders/${result.id}`);
     } catch (error: any) {
@@ -358,11 +393,21 @@ export default function AIOrderChat() {
     }
   };
 
+  const handleSelectConversation = (conv: AIConversation) => {
+    setActiveConvId(conv.id);
+    setExtracted(conv.extracted_order_json as ExtractedOrder | null);
+    setHistoryOpen(false);
+  };
+
+  const handleNewChat = () => {
+    setActiveConvId(null);
+    setMessages([buildWelcome()]);
+    setExtracted(null);
+    setHistoryOpen(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   const suggestions = lang === 'ar'
@@ -395,6 +440,24 @@ export default function AIOrderChat() {
               <span>{savedPrefs.length}</span>
             </div>
           )}
+          {/* History button */}
+          <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+            <SheetTrigger asChild>
+              <button className="p-2 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all">
+                <History className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side={dir === 'rtl' ? 'right' : 'left'} className="w-[320px] p-4">
+              <SheetHeader className="mb-4">
+                <SheetTitle>{lang === 'ar' ? 'المحادثات السابقة' : 'Chat History'}</SheetTitle>
+              </SheetHeader>
+              <AIConversationHistory
+                activeId={activeConvId}
+                onSelect={handleSelectConversation}
+                onNewChat={handleNewChat}
+              />
+            </SheetContent>
+          </Sheet>
           <span className="text-lg font-bold font-en text-primary">YA</span>
         </div>
       </div>
@@ -418,7 +481,6 @@ export default function AIOrderChat() {
                   </div>
                 )}
                 <div className={cn("max-w-[80%] space-y-2")}>
-                  {/* Images */}
                   {images.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {images.map((img, imgIdx) => (
@@ -426,7 +488,6 @@ export default function AIOrderChat() {
                       ))}
                     </div>
                   )}
-                  {/* Text */}
                   {text && (
                     <div className={cn(
                       "rounded-2xl px-4 py-3 text-sm leading-relaxed",
@@ -499,13 +560,8 @@ export default function AIOrderChat() {
               disabled={isCreating}
               className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all disabled:opacity-50"
             >
-              {isCreating ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
-                  <Package className="h-5 w-5" />
-                  {lang === 'ar' ? 'أرسل الطلب' : 'Submit Order'}
-                </>
+              {isCreating ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                <><Package className="h-5 w-5" />{lang === 'ar' ? 'أرسل الطلب' : 'Submit Order'}</>
               )}
             </button>
           </motion.div>
@@ -539,7 +595,7 @@ export default function AIOrderChat() {
                 <img src={img} alt="" className="w-16 h-16 object-cover rounded-xl border-2 border-primary/30" />
                 <button
                   onClick={() => removePendingImage(idx)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -552,37 +608,17 @@ export default function AIOrderChat() {
       {/* Input Bar */}
       <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-3">
         <div className="container flex items-end gap-2">
-          {/* Image upload */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageSelect}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
-          >
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0">
             <ImagePlus className="h-5 w-5" />
           </button>
-
-          {/* Voice */}
           <button
             onClick={voice.toggle}
             disabled={!voice.isSupported}
-            className={cn(
-              "p-3 rounded-xl transition-all shrink-0",
-              voice.isListening
-                ? "bg-destructive text-white animate-pulse"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            )}
+            className={cn("p-3 rounded-xl transition-all shrink-0", voice.isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-muted text-muted-foreground hover:text-foreground")}
           >
             {voice.isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
-
-          {/* Text input */}
           <textarea
             ref={inputRef}
             value={input}
@@ -593,8 +629,6 @@ export default function AIOrderChat() {
             className="flex-1 rounded-2xl border-2 bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none max-h-32"
             style={{ minHeight: '48px' }}
           />
-
-          {/* Send */}
           <button
             onClick={sendMessage}
             disabled={(!input.trim() && pendingImages.length === 0) || isLoading}

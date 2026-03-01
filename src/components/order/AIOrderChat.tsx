@@ -71,6 +71,13 @@ function getImageUrls(content: string | MessageContent[]): string[] {
   return content.filter(c => c.type === 'image_url').map(c => c.image_url?.url || '').filter(Boolean);
 }
 
+// Haptic feedback helper
+function haptic(style: 'light' | 'medium' | 'heavy' = 'light') {
+  if (!navigator.vibrate) return;
+  const patterns = { light: [10], medium: [20], heavy: [30, 10, 30] };
+  navigator.vibrate(patterns[style]);
+}
+
 export default function AIOrderChat() {
   const { lang, dir } = useLang();
   const { user } = useAuth();
@@ -558,9 +565,9 @@ export default function AIOrderChat() {
               ))}
             </div>
             <button
-              onClick={handleCreateOrder}
+              onClick={() => { haptic('heavy'); handleCreateOrder(); }}
               disabled={isCreating}
-              className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full min-h-[52px] py-3.5 rounded-2xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.97] transition-all disabled:opacity-50"
             >
               {isCreating ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                 <><Package className="h-5 w-5" />{lang === 'ar' ? 'أرسل الطلب' : 'Submit Order'}</>
@@ -577,8 +584,8 @@ export default function AIOrderChat() {
             </p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map(s => (
-                <button key={s} onClick={() => setInput(s)}
-                  className="px-3 py-2 rounded-xl bg-card border border-border text-sm hover:border-primary/30 hover:bg-primary/5 transition-all"
+                <button key={s} onClick={() => { haptic(); setInput(s); }}
+                  className="px-4 py-2.5 min-h-[44px] rounded-xl bg-card border border-border text-sm hover:border-primary/30 hover:bg-primary/5 active:scale-95 transition-all"
                 >
                   {s}
                 </button>
@@ -608,20 +615,26 @@ export default function AIOrderChat() {
       )}
 
       {/* Input Bar */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-3">
-        <div className="container flex items-end gap-2">
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="container flex items-end gap-1.5">
           <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
-          <button onClick={() => cameraInputRef.current?.click()} className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0">
+          <button
+            onClick={() => { haptic(); cameraInputRef.current?.click(); }}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground active:scale-90 transition-all shrink-0"
+          >
             <Camera className="h-5 w-5" />
           </button>
-          <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0">
+          <button
+            onClick={() => { haptic(); fileInputRef.current?.click(); }}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground active:scale-90 transition-all shrink-0"
+          >
             <ImagePlus className="h-5 w-5" />
           </button>
           <button
-            onClick={voice.toggle}
+            onClick={() => { haptic(voice.isListening ? 'medium' : 'light'); voice.toggle(); }}
             disabled={!voice.isSupported}
-            className={cn("p-3 rounded-xl transition-all shrink-0", voice.isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-muted text-muted-foreground hover:text-foreground")}
+            className={cn("min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all shrink-0 active:scale-90", voice.isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-muted text-muted-foreground hover:text-foreground")}
           >
             {voice.isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </button>
@@ -636,10 +649,10 @@ export default function AIOrderChat() {
             style={{ minHeight: '48px' }}
           />
           <button
-            onClick={sendMessage}
+            onClick={() => { haptic('medium'); sendMessage(); }}
             disabled={(!input.trim() && pendingImages.length === 0) || isLoading}
             className={cn(
-              "p-3 rounded-xl transition-all shrink-0",
+              "min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl transition-all shrink-0 active:scale-90",
               (input.trim() || pendingImages.length > 0) && !isLoading
                 ? "bg-primary text-primary-foreground shadow-lg hover:brightness-95"
                 : "bg-muted text-muted-foreground cursor-not-allowed"

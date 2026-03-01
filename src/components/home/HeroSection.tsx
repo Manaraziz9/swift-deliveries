@@ -12,7 +12,7 @@ export default function HeroSection() {
 
 
   return (
-    <section className="min-h-[85vh] flex flex-col items-center justify-center px-4 py-16 bg-background">
+    <section className="min-h-[50vh] flex flex-col items-center justify-center px-4 py-12 bg-background">
       {/* YA• */}
       <motion.div
         className="flex items-center gap-1"

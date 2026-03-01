@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Send, Bot, User, Sparkles,
-  Package, Loader2, CheckCircle2, Mic, MicOff, ImagePlus, X,
+  Package, Loader2, CheckCircle2, Mic, MicOff, ImagePlus, X, Camera,
   Brain, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -90,6 +90,7 @@ export default function AIOrderChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const createConv = useCreateAIConversation();
   const updateConv = useUpdateAIConversation();
@@ -148,6 +149,7 @@ export default function AIOrderChat() {
       reader.readAsDataURL(file);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   }, [lang]);
 
   const removePendingImage = (idx: number) => {
@@ -609,6 +611,10 @@ export default function AIOrderChat() {
       <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-3">
         <div className="container flex items-end gap-2">
           <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} className="hidden" />
+          <button onClick={() => cameraInputRef.current?.click()} className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0">
+            <Camera className="h-5 w-5" />
+          </button>
           <button onClick={() => fileInputRef.current?.click()} className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0">
             <ImagePlus className="h-5 w-5" />
           </button>

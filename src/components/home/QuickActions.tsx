@@ -6,28 +6,6 @@ import { cn } from '@/lib/utils';
 
 const actions = [
   {
-    code: 'BUY',
-    icon: ShoppingBag,
-    titleAr: 'اشترِ لي',
-    titleEn: 'Buy for Me',
-    descAr: 'أي منتج من أي محل',
-    descEn: 'Any product, any store',
-    gradient: 'from-orange-500 to-amber-400',
-    bgTint: 'bg-orange-50 dark:bg-orange-950/30',
-    iconColor: 'text-orange-600 dark:text-orange-400',
-  },
-  {
-    code: 'TASK',
-    icon: Truck,
-    titleAr: 'وصّل لي',
-    titleEn: 'Deliver',
-    descAr: 'استلام وتوصيل سريع',
-    descEn: 'Fast pickup & delivery',
-    gradient: 'from-blue-500 to-cyan-400',
-    bgTint: 'bg-blue-50 dark:bg-blue-950/30',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-  },
-  {
     code: 'COORDINATE',
     icon: Wrench,
     titleAr: 'خلّص لي مهمة',
@@ -62,7 +40,7 @@ export default function QuickActions() {
 
   return (
     <section className="px-4 sm:px-6 -mt-6 relative z-10">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {actions.map(({ code, icon: Icon, titleAr, titleEn, descAr, descEn, bgTint, iconColor, gradient }, i) => (
           <motion.button
             key={code}

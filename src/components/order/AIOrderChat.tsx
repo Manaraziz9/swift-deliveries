@@ -1,20 +1,29 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLang } from '@/contexts/LangContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Send, Bot, User, Sparkles,
-  Package, Loader2, CheckCircle2, AlertCircle, Mic, MicOff,
+  Package, Loader2, CheckCircle2, Mic, MicOff, ImagePlus, X,
+  Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCreateOrder } from '@/hooks/useOrders';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | MessageContent[];
+}
+
+interface MessageContent {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: { url: string };
 }
 
 interface ExtractedOrder {
@@ -28,10 +37,30 @@ interface ExtractedOrder {
   missing_fields?: string[];
 }
 
+interface SavedPreference {
+  category: string;
+  key: string;
+  value: string;
+  label_ar?: string;
+}
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-order-ai`;
+
+// Helper to get text content from message
+function getTextContent(content: string | MessageContent[]): string {
+  if (typeof content === 'string') return content;
+  return content.filter(c => c.type === 'text').map(c => c.text || '').join('');
+}
+
+// Helper to get image URLs from message
+function getImageUrls(content: string | MessageContent[]): string[] {
+  if (typeof content === 'string') return [];
+  return content.filter(c => c.type === 'image_url').map(c => c.image_url?.url || '').filter(Boolean);
+}
 
 export default function AIOrderChat() {
   const { lang, dir } = useLang();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const createOrder = useCreateOrder();
   const BackArrow = dir === 'rtl' ? ArrowRight : ArrowLeft;
@@ -41,8 +70,11 @@ export default function AIOrderChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedOrder | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [savedPrefs, setSavedPrefs] = useState<SavedPreference[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const voice = useVoiceInput({
     lang,
@@ -59,26 +91,99 @@ export default function AIOrderChat() {
     const welcome: Message = {
       role: 'assistant',
       content: lang === 'ar'
-        ? 'أهلاً! 👋 أنا مساعدك الذكي في **YA**. قولي وش تبي وأنا أرتّب لك كل شي.\n\nمثلاً:\n- "أبي أفصّل عباية حرير سوداء"\n- "سيارتي فيها مشكلة في المكيف"\n- "أبي أحد يشتري لي من ايكيا"\n- "أبي طبخة كبسة لـ 10 أشخاص"'
-        : "Hi! 👋 I'm your smart assistant at **YA**. Tell me what you need and I'll arrange everything.\n\nFor example:\n- \"I need a black silk abaya tailored\"\n- \"My car AC isn't working\"\n- \"Buy something from IKEA for me\"\n- \"I need kabsa for 10 people\"",
+        ? 'أهلاً! 👋 أنا مساعدك الذكي في **YA**. قولي وش تبي وأنا أرتّب لك كل شي.\n\n📸 تقدر ترسل لي **صورة** وأفهم منها المطلوب\n🎤 أو تكلّم بصوتك\n⌨️ أو اكتب طلبك\n\nمثلاً:\n- "أبي أفصّل عباية حرير سوداء"\n- "سيارتي فيها مشكلة في المكيف"\n- ارسل صورة تصميم وقول "أبي زي كذا"'
+        : "Hi! 👋 I'm your smart assistant at **YA**.\n\n📸 Send me a **photo** and I'll understand what you need\n🎤 Or speak\n⌨️ Or type\n\nFor example:\n- \"I need a black silk abaya tailored\"\n- \"My car AC isn't working\"\n- Send a design photo and say \"I want this\"",
     };
     setMessages([welcome]);
   }, [lang]);
 
+  // Handle image selection
+  const handleImageSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    for (const file of files.slice(0, 3)) { // Max 3 images
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(lang === 'ar' ? 'الصورة كبيرة جداً (الحد 5MB)' : 'Image too large (max 5MB)');
+        continue;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setPendingImages(prev => [...prev, base64]);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [lang]);
+
+  const removePendingImage = (idx: number) => {
+    setPendingImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // Save preference to DB
+  const savePreference = useCallback(async (pref: SavedPreference) => {
+    if (!user) return;
+    try {
+      const { data: existing } = await supabase
+        .from('user_preferences')
+        .select('id, preferences_json')
+        .eq('user_id', user.id)
+        .eq('category', pref.category)
+        .maybeSingle();
+
+      const currentPrefs = (existing?.preferences_json as Record<string, any>) || {};
+      const updatedPrefs = { ...currentPrefs, [pref.key]: pref.value };
+
+      if (existing) {
+        await supabase
+          .from('user_preferences')
+          .update({ preferences_json: updatedPrefs })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('user_preferences')
+          .insert({
+            user_id: user.id,
+            category: pref.category,
+            preferences_json: updatedPrefs,
+          });
+      }
+      setSavedPrefs(prev => [...prev, pref]);
+    } catch (e) {
+      console.error('Failed to save preference:', e);
+    }
+  }, [user]);
+
   const sendMessage = async () => {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && pendingImages.length === 0) || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: text };
+    // Build message content
+    let userContent: string | MessageContent[];
+    if (pendingImages.length > 0) {
+      const parts: MessageContent[] = [];
+      if (text) parts.push({ type: 'text', text });
+      else parts.push({ type: 'text', text: lang === 'ar' ? 'شوف هالصورة وقولي رأيك' : 'Check this image' });
+      for (const img of pendingImages) {
+        parts.push({ type: 'image_url', image_url: { url: img } });
+      }
+      userContent = parts;
+    } else {
+      userContent = text;
+    }
+
+    const userMsg: Message = { role: 'user', content: userContent };
     const allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInput('');
+    setPendingImages([]);
     setIsLoading(true);
 
     let assistantText = '';
 
     try {
-      // Stream the response
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -88,6 +193,7 @@ export default function AIOrderChat() {
         body: JSON.stringify({
           messages: allMessages.map(m => ({ role: m.role, content: m.content })),
           mode: 'chat',
+          user_id: user?.id,
         }),
       });
 
@@ -110,8 +216,8 @@ export default function AIOrderChat() {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let toolCallArgs = '';
-      let isToolCall = false;
+      let toolCallArgs: Record<string, string> = {};
+      let currentToolName = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -130,17 +236,21 @@ export default function AIOrderChat() {
           try {
             const parsed = JSON.parse(json);
             const delta = parsed.choices?.[0]?.delta;
-            
-            // Check for tool calls
+
+            // Handle tool calls
             if (delta?.tool_calls) {
-              isToolCall = true;
-              const tc = delta.tool_calls[0];
-              if (tc?.function?.arguments) {
-                toolCallArgs += tc.function.arguments;
+              for (const tc of delta.tool_calls) {
+                if (tc.function?.name) {
+                  currentToolName = tc.function.name;
+                  if (!toolCallArgs[currentToolName]) toolCallArgs[currentToolName] = '';
+                }
+                if (tc.function?.arguments) {
+                  toolCallArgs[currentToolName] += tc.function.arguments;
+                }
               }
               continue;
             }
-            
+
             const content = delta?.content;
             if (content) {
               assistantText += content;
@@ -156,35 +266,46 @@ export default function AIOrderChat() {
         }
       }
 
-      // Handle tool call extraction
-      if (isToolCall && toolCallArgs) {
+      // Handle tool calls
+      for (const [toolName, args] of Object.entries(toolCallArgs)) {
+        if (!args) continue;
         try {
-          const extractedData = JSON.parse(toolCallArgs) as ExtractedOrder;
-          setExtracted(extractedData);
-          
-          // Add a summary message
-          const priceText = extractedData.estimated_price_low && extractedData.estimated_price_high
-            ? `\n\n💰 ${lang === 'ar' ? 'التقدير:' : 'Estimate:'} ${extractedData.estimated_price_low}-${extractedData.estimated_price_high} ${lang === 'ar' ? 'ر.س' : 'SAR'}`
-            : '';
-          
-          const summaryMsg = extractedData.is_complete
-            ? (lang === 'ar' 
-              ? `✅ جمعت كل التفاصيل!\n\n📋 **${extractedData.summary_ar}**${priceText}\n\nتبي أرسل الطلب؟`
-              : `✅ Got all the details!\n\n📋 **${extractedData.summary_ar}**${priceText}\n\nShall I submit the order?`)
-            : (lang === 'ar'
-              ? `📝 فهمت طلبك: **${extractedData.summary_ar}**${priceText}\n\nبس أحتاج أعرف: ${extractedData.missing_fields?.join('، ')}`
-              : `📝 I understand: **${extractedData.summary_ar}**${priceText}\n\nI still need: ${extractedData.missing_fields?.join(', ')}`);
+          if (toolName === 'extract_order_details') {
+            const extractedData = JSON.parse(args) as ExtractedOrder;
+            setExtracted(extractedData);
 
-          if (!assistantText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: summaryMsg }]);
+            const priceText = extractedData.estimated_price_low && extractedData.estimated_price_high
+              ? `\n\n💰 ${lang === 'ar' ? 'التقدير:' : 'Estimate:'} ${extractedData.estimated_price_low}-${extractedData.estimated_price_high} ${lang === 'ar' ? 'ر.س' : 'SAR'}`
+              : '';
+
+            const summaryMsg = extractedData.is_complete
+              ? (lang === 'ar'
+                ? `✅ جمعت كل التفاصيل!\n\n📋 **${extractedData.summary_ar}**${priceText}\n\nتبي أرسل الطلب؟`
+                : `✅ Got all the details!\n\n📋 **${extractedData.summary_ar}**${priceText}\n\nShall I submit?`)
+              : (lang === 'ar'
+                ? `📝 فهمت طلبك: **${extractedData.summary_ar}**${priceText}\n\nبس أحتاج أعرف: ${extractedData.missing_fields?.join('، ')}`
+                : `📝 Got it: **${extractedData.summary_ar}**${priceText}\n\nStill need: ${extractedData.missing_fields?.join(', ')}`);
+
+            if (!assistantText) {
+              setMessages(prev => [...prev, { role: 'assistant', content: summaryMsg }]);
+            }
+          } else if (toolName === 'save_user_preference') {
+            const pref = JSON.parse(args) as SavedPreference;
+            await savePreference(pref);
+            // Show subtle indicator
+            toast.success(
+              lang === 'ar'
+                ? `🧠 حفظت: ${pref.label_ar || pref.key} = ${pref.value}`
+                : `🧠 Saved: ${pref.key} = ${pref.value}`,
+              { duration: 2000 }
+            );
           }
         } catch (e) {
-          console.error('Failed to parse tool call:', e);
+          console.error('Failed to parse tool call:', toolName, e);
         }
       }
 
-      // If no assistant text was generated and no tool call
-      if (!assistantText && !isToolCall) {
+      if (!assistantText && Object.keys(toolCallArgs).length === 0) {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: lang === 'ar' ? 'عذراً، ما فهمت. ممكن توضح أكثر؟' : 'Sorry, I didn\'t understand. Can you clarify?'
@@ -201,7 +322,6 @@ export default function AIOrderChat() {
   const handleCreateOrder = async () => {
     if (!extracted) return;
     setIsCreating(true);
-
     try {
       const detailsText = Object.entries(extracted.details)
         .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
@@ -229,7 +349,6 @@ export default function AIOrderChat() {
           photo_urls: [],
         }],
       });
-
       toast.success(lang === 'ar' ? 'تم إنشاء الطلب!' : 'Order created!');
       navigate(`/orders/${result.id}`);
     } catch (error: any) {
@@ -246,7 +365,6 @@ export default function AIOrderChat() {
     }
   };
 
-  // Quick suggestion chips
   const suggestions = lang === 'ar'
     ? ['أبي أفصّل عباية', 'سيارتي تحتاج صيانة', 'أبي طبخ منزلي', 'وصّل لي طرد']
     : ['Tailor an abaya', 'Car needs service', 'Home cooking', 'Deliver a package'];
@@ -271,6 +389,12 @@ export default function AIOrderChat() {
               {lang === 'ar' ? 'يفهم طلبك ويرتّبه لك' : 'Understands & arranges your order'}
             </p>
           </div>
+          {savedPrefs.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-lg">
+              <Brain className="h-3 w-3" />
+              <span>{savedPrefs.length}</span>
+            </div>
+          )}
           <span className="text-lg font-bold font-en text-primary">YA</span>
         </div>
       </div>
@@ -278,40 +402,55 @@ export default function AIOrderChat() {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <AnimatePresence mode="popLayout">
-          {messages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              className={cn("flex gap-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}
-            >
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-400 flex items-center justify-center shrink-0 mt-1">
-                  <Bot className="h-4 w-4 text-primary-foreground" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                  msg.role === 'user'
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-card border border-border rounded-bl-md"
-                )}
+          {messages.map((msg, i) => {
+            const text = getTextContent(msg.content);
+            const images = getImageUrls(msg.content);
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={cn("flex gap-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}
               >
-                <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:mt-1 [&>ul]:mb-0">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-400 flex items-center justify-center shrink-0 mt-1">
+                    <Bot className="h-4 w-4 text-primary-foreground" />
+                  </div>
+                )}
+                <div className={cn("max-w-[80%] space-y-2")}>
+                  {/* Images */}
+                  {images.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {images.map((img, imgIdx) => (
+                        <img key={imgIdx} src={img} alt="" className="w-24 h-24 object-cover rounded-xl border border-border" />
+                      ))}
+                    </div>
+                  )}
+                  {/* Text */}
+                  {text && (
+                    <div className={cn(
+                      "rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                      msg.role === 'user'
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-card border border-border rounded-bl-md"
+                    )}>
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:mt-1 [&>ul]:mb-0">
+                        <ReactMarkdown>{text}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-1">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-            </motion.div>
-          ))}
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-1">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
-        {/* Loading indicator */}
+        {/* Loading */}
         {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-400 flex items-center justify-center shrink-0">
@@ -336,9 +475,7 @@ export default function AIOrderChat() {
           >
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-primary" />
-              <h3 className="font-bold">
-                {lang === 'ar' ? 'ملخص الطلب' : 'Order Summary'}
-              </h3>
+              <h3 className="font-bold">{lang === 'ar' ? 'ملخص الطلب' : 'Order Summary'}</h3>
             </div>
             <p className="text-sm">{extracted.summary_ar}</p>
             {extracted.estimated_price_low && extracted.estimated_price_high && (
@@ -374,7 +511,7 @@ export default function AIOrderChat() {
           </motion.div>
         )}
 
-        {/* Quick suggestions (only when no messages from user yet) */}
+        {/* Quick suggestions */}
         {messages.length <= 1 && (
           <div className="space-y-2 pt-2">
             <p className="text-xs text-muted-foreground font-medium">
@@ -382,9 +519,7 @@ export default function AIOrderChat() {
             </p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map(s => (
-                <button
-                  key={s}
-                  onClick={() => { setInput(s); }}
+                <button key={s} onClick={() => setInput(s)}
                   className="px-3 py-2 rounded-xl bg-card border border-border text-sm hover:border-primary/30 hover:bg-primary/5 transition-all"
                 >
                   {s}
@@ -395,9 +530,44 @@ export default function AIOrderChat() {
         )}
       </div>
 
+      {/* Pending images preview */}
+      {pendingImages.length > 0 && (
+        <div className="px-4 pb-2">
+          <div className="flex gap-2 flex-wrap">
+            {pendingImages.map((img, idx) => (
+              <div key={idx} className="relative group">
+                <img src={img} alt="" className="w-16 h-16 object-cover rounded-xl border-2 border-primary/30" />
+                <button
+                  onClick={() => removePendingImage(idx)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input Bar */}
       <div className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border p-3">
         <div className="container flex items-end gap-2">
+          {/* Image upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-3 rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </button>
+
           {/* Voice */}
           <button
             onClick={voice.toggle}
@@ -418,7 +588,7 @@ export default function AIOrderChat() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={lang === 'ar' ? 'اكتب أو تكلّم...' : 'Type or speak...'}
+            placeholder={lang === 'ar' ? 'اكتب أو أرسل صورة...' : 'Type or send a photo...'}
             rows={1}
             className="flex-1 rounded-2xl border-2 bg-card px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none max-h-32"
             style={{ minHeight: '48px' }}
@@ -427,10 +597,10 @@ export default function AIOrderChat() {
           {/* Send */}
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && pendingImages.length === 0) || isLoading}
             className={cn(
               "p-3 rounded-xl transition-all shrink-0",
-              input.trim() && !isLoading
+              (input.trim() || pendingImages.length > 0) && !isLoading
                 ? "bg-primary text-primary-foreground shadow-lg hover:brightness-95"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}

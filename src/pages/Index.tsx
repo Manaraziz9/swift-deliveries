@@ -2,9 +2,12 @@ import { lazy, Suspense } from 'react';
 import TopBar from '@/components/layout/TopBar';
 import BottomNav from '@/components/layout/BottomNav';
 import HeroSection from '@/components/home/HeroSection';
+import QuickActions from '@/components/home/QuickActions';
+import DealsStrip from '@/components/home/DealsStrip';
 import LastOrderStrip from '@/components/home/LastOrderStrip';
 import AwaitingPickupStrip from '@/components/home/AwaitingPickupStrip';
 import YourUsualStrip from '@/components/home/YourUsualStrip';
+import QuickOrderFAB from '@/components/home/QuickOrderFAB';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const NearYouSection = lazy(() => import('@/components/home/NearYouSection'));
@@ -31,6 +34,8 @@ export default function Index() {
       <TopBar />
       <main>
         <HeroSection />
+        <QuickActions />
+        <DealsStrip />
         <AwaitingPickupStrip />
         <LastOrderStrip />
         <YourUsualStrip />
@@ -47,6 +52,7 @@ export default function Index() {
           <TopRatedSection />
         </Suspense>
       </main>
+      <QuickOrderFAB />
       <BottomNav />
     </div>
   );
